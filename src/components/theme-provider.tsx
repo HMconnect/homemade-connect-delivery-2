@@ -1,10 +1,13 @@
-"use client"
-
 import * as React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
-import { ThemeProviderProps } from "next-themes/dist/types"
 
 type Theme = "dark" | "light" | "system"
+
+type ThemeProviderProps = {
+  children: React.ReactNode
+  defaultTheme?: Theme
+  storageKey?: string
+}
 
 type ThemeContextType = {
   theme: Theme
@@ -16,17 +19,17 @@ const ThemeContext = createContext<ThemeContextType | null>(null)
 export function ThemeProvider({
   children,
   defaultTheme = "system",
-  value: _value,
-  ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window !== "undefined") {
+  const [theme, setThemeState] = useState<Theme>(() => {
+    try {
       const savedTheme = localStorage.getItem("theme")
-      return (savedTheme && (savedTheme === "dark" || savedTheme === "light" || savedTheme === "system")
-        ? savedTheme
-        : defaultTheme) as Theme
+      if (savedTheme === "dark" || savedTheme === "light" || savedTheme === "system") {
+        return savedTheme
+      }
+    } catch {
+      // localStorage not available
     }
-    return defaultTheme as Theme
+    return defaultTheme
   })
 
   useEffect(() => {
@@ -34,8 +37,7 @@ export function ThemeProvider({
     root.classList.remove("light", "dark")
 
     if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
+      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         ? "dark"
         : "light"
       root.classList.add(systemTheme)
@@ -47,14 +49,18 @@ export function ThemeProvider({
 
   const value: ThemeContextType = {
     theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem("theme", theme)
-      setTheme(theme)
+    setTheme: (newTheme: Theme) => {
+      try {
+        localStorage.setItem("theme", newTheme)
+      } catch {
+        // localStorage not available
+      }
+      setThemeState(newTheme)
     },
   }
 
   return (
-    <ThemeContext.Provider value={value} {...props}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   )
