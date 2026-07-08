@@ -2,7 +2,6 @@ import React from 'react';
 import { Star, Clock, MapPin, Award } from 'lucide-react';
 import { StarRating } from './reviews/StarRating';
 
-
 interface VendorCardProps {
   id: string;
   name: string;
@@ -13,6 +12,7 @@ interface VendorCardProps {
   distance: string;
   specialty: string;
   isPartner: boolean;
+  isSample?: boolean;
   onClick: () => void;
 }
 
@@ -25,18 +25,25 @@ const VendorCard: React.FC<VendorCardProps> = ({
   distance,
   specialty,
   isPartner,
+  isSample = true,
   onClick
 }) => {
-
   return (
-    <div 
-      className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer group p-4"
+    <div
+      className="relative overflow-hidden bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer group p-4"
       onClick={onClick}
     >
+      {isSample && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+          <span className="-rotate-12 rounded-lg border-4 border-red-500/70 bg-white/70 px-6 py-1 text-2xl font-extrabold tracking-widest text-red-500/80">
+            SAMPLE
+          </span>
+        </div>
+      )}
       <div className="flex items-center gap-4">
         <div className="relative">
-          <img 
-            src={image} 
+          <img
+            src={image}
             alt={name}
             className="w-16 h-16 rounded-full object-cover"
           />
@@ -46,7 +53,7 @@ const VendorCard: React.FC<VendorCardProps> = ({
             </div>
           )}
         </div>
-        
+
         <div className="flex-1">
           <div className="flex items-center justify-between mb-1">
             <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
@@ -61,9 +68,8 @@ const VendorCard: React.FC<VendorCardProps> = ({
             </div>
           </div>
 
-          
           <p className="text-sm text-gray-600 mb-2">{specialty}</p>
-          
+
           <div className="flex items-center gap-4 text-xs text-gray-500">
             <div className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
