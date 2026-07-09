@@ -16,10 +16,14 @@ import DriverDashboard from "./pages/DriverDashboard";
 import VendorProfile from "./pages/VendorProfile";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { retry: 1, refetchOnWindowFocus: false },
+  },
+});
 
 const App = () => (
-  <ThemeProvider defaultTheme="light">
+  <ThemeProvider>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
