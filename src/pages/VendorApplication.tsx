@@ -16,7 +16,7 @@ const STEPS = [
 ];
 
 export default function VendorApplication() {
-  const { user, profile, updateProfile } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [step, setStep] = useState(1);
@@ -32,7 +32,7 @@ export default function VendorApplication() {
     communityTag: profile?.community_tag || '',
     state: profile?.state || 'IL',
     city: profile?.city || 'Chicago',
-    licenseUrl: profile?.license_url || null as string | null,
+    licenseUrl: (profile?.license_url || null) as string | null,
     termsAgreed: false,
   });
 
@@ -40,15 +40,25 @@ export default function VendorApplication() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleLicenseUploaded = (url: string) => {
+    setFormData(prev => ({ ...prev, licenseUrl: url }));
+  };
+
+  const handleTermsChange = (agreed: boolean) => {
+    setFormData(prev => ({ ...prev, termsAgreed: agreed }));
+  };
+
   const canProceed = () => {
     if (step === 1) {
-      return formData.businessName &&
-             formData.businessDescription &&
-             formData.businessAddress &&
-             formData.businessPhone &&
-             formData.vendorType &&
-             formData.state &&
-             formData.city;
+      return Boolean(
+        formData.businessName &&
+        formData.businessDescription &&
+        formData.businessAddress &&
+        formData.businessPhone &&
+        formData.vendorType &&
+        formData.state &&
+        formData.city
+      );
     }
     if (step === 2) return true; // License optional for cottage food
     if (step === 3) return formData.termsAgreed;
@@ -87,7 +97,11 @@ export default function VendorApplication() {
       setSubmitted(true);
       toast({ title: '🎉 Application submitted!', description: 'We will review and approve you shortly.' });
     } catch (error: any) {
-      toast({ title: 'Submission failed', description: error.message, variant: 'destructive' });
+      toast({
+        title: 'Submission failed',
+        description: error?.message || 'Something went wrong — please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setSubmitting(false);
     }
@@ -132,7 +146,6 @@ export default function VendorApplication() {
           <p className="text-gray-400 text-xs mb-6">
             We typically review applications within 24–48 hours. You'll receive an email at <strong>{user.email}</strong> once approved.
           </p>
-          {/* First 100 bonus */}
           <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 mb-6">
             <p className="text-orange-700 font-bold">🎉 You may qualify for the First 100 Vendors Bonus!</p>
             <p className="text-orange-600 text-xs mt-1">If you're one of our first 100 vendors, a <strong>$10 credit</strong> will be applied to your account upon approval.</p>
@@ -192,15 +205,23 @@ export default function VendorApplication() {
 
         {/* Step content */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
-          {step === 1 && <BusinessInfoStep data={formData} onChange={handleFieldChange} />}
-          {step === 2 && <LicenseStep
-            licenseUrl={formData.licenseUrl}
-            onLicenseUpload={(url) => setFormData(prev => ({ ...prev, licenseUrl: url }))}
-          />}
-          {step === 3 && <TermsStep
-            termsAgreed={formData.termsAgreed}
-            onTermsChange={(agreed) => setFormData(prev => ({ ...prev, termsAgreed: agreed }))}
-          />}
+          {step === 1 && (
+            <BusinessInfoStep data={formData} onChange={handleFieldChange} />
+          )}
+          {step === 2 && (
+            <LicenseStep
+              licenseUrl={formData.licenseUrl}
+              onLicenseUploaded={handleLicenseUploaded}
+              userId={user.id}
+            />
+          )}
+          {step === 3 && (
+            <TermsStep
+              termsAgreed={formData.termsAgreed}
+              onTermsChange={handleTermsChange}
+              state={formData.state}
+            />
+          )}
         </div>
 
         {/* Navigation */}
