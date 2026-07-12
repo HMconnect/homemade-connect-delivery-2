@@ -449,6 +449,16 @@ const Welcome: React.FC = () => {
               )}
             </Button>
 
+          {/* Help notice */}
+            {mode === 'login' && (
+              <p className="text-center text-xs text-gray-500">
+                Having trouble signing in? Email us at{' '}
+                <a href="mailto:info@homemadeconnectdelivery.com" className="text-orange-600 font-semibold hover:underline">
+                  info@homemadeconnectdelivery.com
+                </a>{' '}
+                with your name, business name, and signup email — we'll get you back in, usually within 24 hours.
+              </p>
+            )} 
             {/* Switch mode */}
             <p className="text-center text-sm text-gray-500">
               {mode === 'login' ? (
