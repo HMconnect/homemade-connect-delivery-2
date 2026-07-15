@@ -14,14 +14,13 @@ import AdminSetup from "./pages/AdminSetup";
 import VendorDashboard from "./pages/VendorDashboard";
 import DriverDashboard from "./pages/DriverDashboard";
 import VendorProfile from "./pages/VendorProfile";
+import HowPaymentsWork from "./pages/HowPaymentsWork";
 import NotFound from "./pages/NotFound";
-
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { retry: 1, refetchOnWindowFocus: false },
   },
 });
-
 const App = () => (
   <ThemeProvider>
     <QueryClientProvider client={queryClient}>
@@ -40,6 +39,7 @@ const App = () => (
                 <Route path="/vendor-dashboard" element={<VendorDashboard />} />
                 <Route path="/driver" element={<DriverDashboard />} />
                 <Route path="/vendor/:id" element={<VendorProfile />} />
+                <Route path="/payments" element={<HowPaymentsWork />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
@@ -49,5 +49,4 @@ const App = () => (
     </QueryClientProvider>
   </ThemeProvider>
 );
-
 export default App;
