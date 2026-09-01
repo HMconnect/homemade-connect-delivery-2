@@ -552,7 +552,16 @@ const AppLayoutContent: React.FC = () => {
                     </Badge>
                   </div>
                   <VendorCard
-                    {...vendor}
+                    vendor={{
+                      id: vendor.id,
+                      name: vendor.name,
+                      image: vendor.image,
+                      cuisine: vendor.specialty,
+                      rating: vendor.rating,
+                      prepTime: vendor.deliveryTime,
+                      distance: vendor.distance,
+                      description: vendor.specialty,
+                    }}
                     onClick={() => console.log('Vendor clicked:', vendor.name)}
                   />
                 </div>
@@ -731,3 +740,4 @@ const AppLayout: React.FC = () => (
 );
 
 export default AppLayout;
+
