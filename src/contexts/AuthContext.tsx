@@ -105,12 +105,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             full_name: userData.user.user_metadata?.full_name || userData.user.email || '',
             role: 'customer' as const,
           };
-          const { data: created } = await supabase
+          const { data: created, error: insertError } = await supabase
             .from('user_profiles')
             .insert([newProfile])
             .select()
             .single();
-          if (created) setProfile(created);
+          if (insertError) {
+            console.error('Error creating user profile:', insertError.message, insertError.code);
+          } else if (created) {
+            setProfile(created);
+          }
         }
       } else if (data) {
         setProfile(data);
