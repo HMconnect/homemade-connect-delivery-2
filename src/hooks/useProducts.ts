@@ -160,9 +160,11 @@ export const useProducts = (state: string, city: string, searchQuery: string = '
         } else {
           const mapped = data.map((p: any) => ({
             ...p,
+            name: p.product_name || p.name,
             vendor_name: p.user_profiles?.business_name || p.user_profiles?.full_name || 'Local Vendor',
             prep_time_min: p.prep_time_min || 20,
             prep_time_max: p.prep_time_max || 35,
+            rating: p.rating || 4.5,
           }));
           setProducts(mapped);
         }
@@ -178,3 +180,4 @@ export const useProducts = (state: string, city: string, searchQuery: string = '
 
   return { products, loading, error };
 };
+
