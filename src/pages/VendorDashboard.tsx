@@ -46,49 +46,73 @@ const VendorDashboard: React.FC = () => {
   const fetchProducts = async () => {
     if (!profile) return;
     const { data, error } = await supabase
-      .from('vendor_products')
+      .from('products')
       .select('*')
       .eq('vendor_id', profile.id)
       .order('created_at', { ascending: false });
-    if (!error && data) setProducts(data);
+    if (error) {
+      toast({ title: 'Could not load products', description: error.message, variant: 'destructive' });
+      return;
+    }
+    if (data) setProducts(data.map((p: any) => ({ ...p, name: p.product_name })));
+  };
+
+  // The `products` table stores the dish name as `product_name` and needs a
+  // state/city so it shows up in the right customers' location filter — the
+  // vendor's own approved profile already has both.
+  const toDbRow = (formData: any) => {
+    const { name, ...rest } = formData;
+    return {
+      ...rest,
+      product_name: name,
+      state: profile?.state,
+      city: profile?.city,
+    };
   };
 
   const handleSubmit = async (formData: any) => {
     if (editingProduct) {
       const { error } = await supabase
-        .from('vendor_products')
-        .update({ ...formData, updated_at: new Date().toISOString() })
+        .from('products')
+        .update({ ...toDbRow(formData), updated_at: new Date().toISOString() })
         .eq('id', editingProduct.id);
       if (!error) {
         toast({ title: 'Success', description: 'Product updated successfully' });
         fetchProducts();
         setShowForm(false);
         setEditingProduct(null);
+      } else {
+        toast({ title: 'Update failed', description: error.message, variant: 'destructive' });
       }
     } else {
       const { error } = await supabase
-        .from('vendor_products')
-        .insert([{ ...formData, vendor_id: profile?.id }]);
+        .from('products')
+        .insert([{ ...toDbRow(formData), vendor_id: profile?.id }]);
       if (!error) {
         toast({ title: 'Success', description: 'Product added successfully' });
         fetchProducts();
         setShowForm(false);
+      } else {
+        toast({ title: 'Could not add product', description: error.message, variant: 'destructive' });
       }
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this product?')) return;
-    const { error } = await supabase.from('vendor_products').delete().eq('id', id);
+    const { error } = await supabase.from('products').delete().eq('id', id);
     if (!error) {
       toast({ title: 'Success', description: 'Product deleted' });
       fetchProducts();
+    } else {
+      toast({ title: 'Delete failed', description: error.message, variant: 'destructive' });
     }
   };
 
   const handleToggleActive = async (id: string, isActive: boolean) => {
-    const { error } = await supabase.from('vendor_products').update({ is_active: isActive }).eq('id', id);
+    const { error } = await supabase.from('products').update({ is_available: isActive }).eq('id', id);
     if (!error) fetchProducts();
+    else toast({ title: 'Could not update', description: error.message, variant: 'destructive' });
   };
 
   const filteredProducts = products.filter(p => 
@@ -158,3 +182,4 @@ const VendorDashboard: React.FC = () => {
 };
 
 export default VendorDashboard;
+
