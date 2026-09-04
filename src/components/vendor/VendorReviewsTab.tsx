@@ -44,8 +44,8 @@ export const VendorReviewsTab: React.FC = () => {
   const fetchProducts = async () => {
     if (!profile) return;
     const { data } = await supabase
-      .from('vendor_products')
-      .select('id, name')
+      .from('products')
+      .select('id, name:product_name')
       .eq('vendor_id', profile.id);
     if (data) setProducts(data);
   };
@@ -53,7 +53,7 @@ export const VendorReviewsTab: React.FC = () => {
   const fetchReviews = async () => {
     if (!profile) return;
     const { data: productData } = await supabase
-      .from('vendor_products')
+      .from('products')
       .select('id')
       .eq('vendor_id', profile.id);
     
@@ -73,13 +73,13 @@ export const VendorReviewsTab: React.FC = () => {
     if (data) {
       const reviewsWithDetails = await Promise.all(data.map(async (review) => {
         const { data: pData } = await supabase
-          .from('vendor_products')
-          .select('name')
+          .from('products')
+          .select('name:product_name')
           .eq('id', review.product_id)
           .single();
-        
+
         const { data: uData } = await supabase
-          .from('profiles')
+          .from('user_profiles')
           .select('full_name')
           .eq('id', review.user_id)
           .single();
@@ -238,3 +238,4 @@ export const VendorReviewsTab: React.FC = () => {
     </div>
   );
 };
+
