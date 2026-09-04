@@ -22,8 +22,8 @@ export const ProductListItem: React.FC<ProductListItemProps> = ({ product, onEdi
       <div className="flex-1">
         <div className="flex items-center gap-2">
           <h4 className="font-semibold">{product.name}</h4>
-          <Badge variant={product.is_active ? 'default' : 'secondary'}>
-            {product.is_active ? 'Active' : 'Inactive'}
+          <Badge variant={product.is_available ? 'default' : 'secondary'}>
+            {product.is_available ? 'Active' : 'Inactive'}
           </Badge>
         </div>
         <p className="text-sm text-gray-600 line-clamp-1">{product.description}</p>
@@ -35,8 +35,8 @@ export const ProductListItem: React.FC<ProductListItemProps> = ({ product, onEdi
       </div>
 
       <div className="flex gap-2">
-        <Button size="sm" variant="outline" onClick={() => onToggleActive(product.id, !product.is_active)}>
-          {product.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        <Button size="sm" variant="outline" onClick={() => onToggleActive(product.id, !product.is_available)}>
+          {product.is_available ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </Button>
         <Button size="sm" variant="outline" onClick={() => onEdit(product)}>
           <Edit className="h-4 w-4" />
@@ -48,3 +48,4 @@ export const ProductListItem: React.FC<ProductListItemProps> = ({ product, onEdi
     </div>
   );
 };
+
