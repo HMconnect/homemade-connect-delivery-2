@@ -33,7 +33,7 @@
 
 CREATE TABLE IF NOT EXISTS order_items (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
+  order_id BIGINT REFERENCES orders(id) ON DELETE CASCADE,
   food_item_id TEXT,
   food_name TEXT,
   quantity INTEGER NOT NULL DEFAULT 1,
