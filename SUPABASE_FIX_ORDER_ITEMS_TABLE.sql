@@ -96,7 +96,7 @@ ON order_items FOR ALL
 USING (
   EXISTS (
     SELECT 1 FROM user_profiles
-    WHERE id = auth.uid() AND is_admin = true
+    WHERE id = auth.uid() AND role = 'admin'
   )
 );
 
