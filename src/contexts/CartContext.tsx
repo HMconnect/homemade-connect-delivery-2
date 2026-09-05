@@ -116,7 +116,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         special_instructions: item.specialInstructions
       }));
 
-      await supabase.from('order_items').insert(orderItems);
+      const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
+      if (itemsError) throw itemsError;
       
       clearCart();
       toast({ title: "Order placed!", description: "Your order has been submitted successfully" });
