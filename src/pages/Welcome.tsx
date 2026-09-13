@@ -194,6 +194,13 @@ const Welcome: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-orange-500 via-red-500 to-pink-600 flex flex-col relative overflow-hidden">
         <div className="absolute inset-0 opacity-5"
           style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+           {/* Pinned Sign In button — always visible on load, no scrolling needed */}
+        <button
+          onClick={() => setMode('login')}
+          className="fixed top-4 right-4 z-50 bg-white/20 hover:bg-white/30 text-white text-sm font-bold px-4 py-2 rounded-full backdrop-blur-sm border border-white/30"
+        >
+          Sign In
+        </button>     
 
         <div className="relative flex-1 flex flex-col items-center justify-center px-6 py-12">
           {/* Logo */}
