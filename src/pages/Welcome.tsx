@@ -298,6 +298,27 @@ const Welcome: React.FC = () => {
           </div>
 
           <div className="p-5 space-y-4">
+            {/* Sign In / Create Account switch — always visible, no scrolling needed */}
+            <div className="flex bg-gray-100 rounded-xl p-1">
+              <button
+                type="button"
+                onClick={() => { setMode('login'); setErrors({}); }}
+                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
+                  mode === 'login' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500'
+                }`}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode('signup'); setErrors({}); }}
+                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
+                  mode === 'signup' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500'
+                }`}
+              >
+                Create Account
+              </button>
+            </div>            
 
             {/* Social login buttons */}
             <div className="grid grid-cols-2 gap-2">
