@@ -16,6 +16,7 @@ import { OrderTracking } from './OrderTracking';
 import { PaymentForm } from './PaymentForm';
 import { CustomerOrdersView } from './CustomerOrdersView';
 import { NotificationSystem } from './NotificationSystem';
+import { UserProfile } from './UserProfile';
 import { LocationSelector } from './LocationSelector';
 import { CommunityShowcase } from './CommunityShowcase';
 import { MarketShowcase } from './MarketShowcase';
@@ -236,6 +237,7 @@ const AppLayoutContent: React.FC = () => {
   const [showOrderTracking, setShowOrderTracking] = useState(false);
   const [showOrderHistory, setShowOrderHistory] = useState(false);
   const [showSubscription, setShowSubscription] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);  
   const [currentOrderId, setCurrentOrderId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('delivery');
@@ -317,14 +319,14 @@ const AppLayoutContent: React.FC = () => {
               <Button variant="ghost" size="sm" onClick={() => setShowOrderHistory(true)}>
                 <Clock className="h-5 w-5" />
               </Button>
-              <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" onClick={() => setShowProfile(true)}>  
                 <User className="w-5 h-5" />
               </Button>
             </div>
           </div>
         </div>
       </header>
-
+        
       {/* Hero — dynamically changes when a community is selected */}
       <section className={`relative bg-gradient-to-br overflow-hidden ${
         activeCommunity ? activeCommunity.color : 'from-orange-500 via-red-500 to-pink-600'
@@ -729,6 +731,7 @@ const AppLayoutContent: React.FC = () => {
           <CustomerOrdersView />
         </DialogContent>
       </Dialog>
+        <UserProfile open={showProfile} onClose={() => setShowProfile(false)} />    
     </div>
   );
 };
