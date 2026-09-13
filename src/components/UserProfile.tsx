@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +18,8 @@ interface UserProfileProps {
 
 export const UserProfile: React.FC<UserProfileProps> = ({ open, onClose }) => {
   const { user, profile, signOut, updateProfile } = useAuth();
+    const [applyingDriver, setApplyingDriver] = useState(false);
+    const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [phone, setPhone] = useState(profile?.phone || '');
@@ -34,6 +37,20 @@ export const UserProfile: React.FC<UserProfileProps> = ({ open, onClose }) => {
     await signOut();
     onClose();
     toast({ title: 'Signed Out', description: 'You have been logged out.' });
+  };
+
+    const handleBecomeDriver = async () => {
+    setApplyingDriver(true);
+    try {
+      await updateProfile({ role: 'driver' });
+      toast({ title: '🚗 You\'re now a driver!', description: 'Welcome to the Homemade Connect driver team.' });
+      onClose();
+      navigate('/driver');
+    } catch {
+      toast({ title: 'Something went wrong', description: 'Please try again.', variant: 'destructive' });
+    } finally {
+      setApplyingDriver(false);
+    }
   };
 
   const getRoleBadgeColor = (role: string) => {
@@ -96,7 +113,20 @@ export const UserProfile: React.FC<UserProfileProps> = ({ open, onClose }) => {
               <Button onClick={() => setEditing(true)} className="w-full">Edit Profile</Button>
             </>
           )}
-          {profile?.role === 'vendor' && <LicenseUpload />}
+          {profile?.role === 'customer' && (
+  <div className="border border-blue-200 bg-blue-50 rounded-lg p-3 space-y-2">
+    <p className="text-sm font-medium text-blue-900">🚗 Want to drive & earn?</p>
+    <p className="text-xs text-blue-700">Deliver orders in your community and earn flexible income.</p>
+    <Button
+      onClick={handleBecomeDriver}
+      disabled={applyingDriver}
+      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+    >
+      {applyingDriver ? 'Setting up your driver account...' : 'Become a Driver'}
+    </Button>
+  </div>
+)}
+{profile?.role === 'vendor' && <LicenseUpload />}
           <Button variant="destructive" onClick={handleSignOut} className="w-full"><LogOut className="w-4 h-4 mr-2" />Sign Out</Button>
         </div>
       </DialogContent>
