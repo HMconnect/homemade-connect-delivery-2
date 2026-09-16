@@ -59,8 +59,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let settled = false;
+
+    // Safety net: never let the app hang on the loading screen forever.
+    const timeoutId = setTimeout(() => {
+      if (!settled) {
+        console.warn('Session check timed out — showing sign-in screen.');
+        settled = true;
+        setLoading(false);
+      }
+    }, 8000);
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -68,7 +82,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setLoading(false);
       }
-    }).catch(() => setLoading(false));
+    }).catch(() => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      setLoading(false);
+    });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -84,7 +103,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchProfile = async (userId: string) => {
