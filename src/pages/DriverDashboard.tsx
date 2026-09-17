@@ -3,13 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Car, MapPin, DollarSign, Star, Clock, ChefHat,
   CheckCircle, Package, Truck, Bell, TrendingUp,
   Award, Target, Zap, ChevronRight, Phone, Navigation
 } from 'lucide-react';
 
-// ─── Sample active orders ─────────────────────────────────────────────────────
+// ─── Sample available orders ───────────────────────────────────────────────────
+// NOTE: These are placeholder/preview orders, not real live assignments — real
+// order-matching for drivers hasn't been built yet. They're shown so a driver can
+// see what an order card looks like, clearly labeled as a preview in the UI below.
+// Do NOT use this data to represent a driver's own history or earnings.
 const SAMPLE_AVAILABLE_ORDERS = [
   {
     id: 'ord-001',
@@ -61,11 +66,9 @@ const SAMPLE_AVAILABLE_ORDERS = [
   },
 ];
 
-const COMPLETED_TODAY = [
-  { id: 'c1', vendor: "Sarah's Kitchen", customer: 'David L.', pay: 8.50, tip: 3.00, time: '11:32 AM', miles: 2.1 },
-  { id: 'c2', vendor: "Chen's Dumplings", customer: 'Lisa W.', pay: 6.00, tip: 2.00, time: '12:15 PM', miles: 1.5 },
-  { id: 'c3', vendor: "Big Mama's Kitchen", customer: 'Robert J.', pay: 9.50, tip: 5.00, time: '1:45 PM', miles: 3.2 },
-];
+// Real per-driver delivery history isn't tracked in the database yet, so a new
+// driver correctly starts with none — no fabricated "completed" deliveries.
+const COMPLETED_TODAY: Array<{ id: string; vendor: string; customer: string; pay: number; tip: number; time: string; miles: number }> = [];
 
 // ─── Driver tier info ─────────────────────────────────────────────────────────
 const DRIVER_TIERS = [
@@ -83,19 +86,23 @@ const CATEGORY_EMOJI: Record<string, string> = {
 
 const DriverDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const [isOnline, setIsOnline] = useState(false);
   const [activeOrder, setActiveOrder] = useState<any>(null);
   const [acceptedOrders, setAcceptedOrders] = useState<string[]>([]);
   const [orderStep, setOrderStep] = useState(0);
 
-  // Driver stats
-  const totalDeliveries = 47;
+  // Driver stats — pulled from this driver's own profile, defaulting to an honest
+  // zero/"New" state rather than fabricated numbers. Real per-delivery earnings
+  // tracking isn't built yet, so weekly/today earnings reflect only what's been
+  // recorded on the profile (currently nothing) until that's wired up.
+  const totalDeliveries = profile?.total_deliveries ?? 0;
   const currentTier = DRIVER_TIERS[0];
   const nextTier = DRIVER_TIERS[1];
   const toNextTier = nextTier.min - totalDeliveries;
-  const rating = 4.8;
+  const rating = profile?.driver_rating ?? null;
   const todayEarnings = COMPLETED_TODAY.reduce((sum, o) => sum + o.pay + o.tip, 0);
-  const weekEarnings = 312.50;
+  const weekEarnings = 0;
   const milestoneBonusProgress = totalDeliveries % 50;
 
   const ORDER_STEPS = [
@@ -251,12 +258,12 @@ const DriverDashboard: React.FC = () => {
           </div>
           <div className="bg-white rounded-2xl p-3 border border-gray-100 text-center">
             <TrendingUp className="w-5 h-5 text-blue-500 mx-auto mb-1" />
-            <p className="text-xl font-bold text-gray-900">${weekEarnings}</p>
+            <p className="text-xl font-bold text-gray-900">${weekEarnings.toFixed(2)}</p>
             <p className="text-xs text-gray-500">This Week</p>
           </div>
           <div className="bg-white rounded-2xl p-3 border border-gray-100 text-center">
             <Star className="w-5 h-5 text-yellow-500 mx-auto mb-1" />
-            <p className="text-xl font-bold text-gray-900">{rating}⭐</p>
+            <p className="text-xl font-bold text-gray-900">{rating !== null ? `${rating}⭐` : 'New'}</p>
             <p className="text-xs text-gray-500">Rating</p>
           </div>
         </div>
@@ -286,16 +293,16 @@ const DriverDashboard: React.FC = () => {
               </div>
             ) : (
               <>
-                {/* Peak hour banner */}
-                <div className="bg-gradient-to-r from-yellow-400 to-orange-500 rounded-xl p-3 flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-white flex-shrink-0" />
+                {/* Preview notice — live order-matching for drivers isn't built yet */}
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-blue-500 flex-shrink-0" />
                   <div>
-                    <p className="text-white font-bold text-sm">🔥 Peak Hour Bonus Active!</p>
-                    <p className="text-white/90 text-xs">+$1.50 on every delivery until 2:00 PM</p>
+                    <p className="text-blue-800 font-bold text-sm">🚧 Preview orders</p>
+                    <p className="text-blue-700 text-xs">These are sample orders to show how it'll work — real live orders aren't connected here yet.</p>
                   </div>
                 </div>
 
-                <p className="text-sm font-semibold text-gray-700">{SAMPLE_AVAILABLE_ORDERS.length} orders available near you</p>
+                <p className="text-sm font-semibold text-gray-700">{SAMPLE_AVAILABLE_ORDERS.length} sample orders shown below</p>
 
                 {SAMPLE_AVAILABLE_ORDERS.map(order => (
                   <div key={order.id} className={`bg-white rounded-2xl border overflow-hidden transition-all ${
@@ -374,7 +381,7 @@ const DriverDashboard: React.FC = () => {
                   <p className="text-white/80 text-xs">Tips (100%)</p>
                 </div>
                 <div className="bg-white/20 rounded-xl p-2">
-                  <p className="font-bold">$3.00</p>
+                  <p className="font-bold">$0.00</p>
                   <p className="text-white/80 text-xs">Peak Bonus</p>
                 </div>
               </div>
@@ -403,6 +410,13 @@ const DriverDashboard: React.FC = () => {
               <div className="p-4 border-b border-gray-50">
                 <h3 className="font-bold text-gray-800">Completed Today ({COMPLETED_TODAY.length})</h3>
               </div>
+              {COMPLETED_TODAY.length === 0 && (
+                <div className="text-center py-8 px-4">
+                  <Package className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">No deliveries yet today</p>
+                  <p className="text-xs text-gray-400">Accept an order below to start earning</p>
+                </div>
+              )}
               {COMPLETED_TODAY.map((delivery, i) => (
                 <div key={delivery.id} className="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
                   <div className="flex items-center gap-3">
@@ -439,7 +453,7 @@ const DriverDashboard: React.FC = () => {
                 </div>
               </div>
               <p className="text-white/90 text-sm mb-3">
-                {totalDeliveries} total deliveries · {rating}⭐ rating
+                {totalDeliveries} total deliveries · {rating !== null ? `${rating}⭐ rating` : 'no rating yet'}
               </p>
               <div className="bg-white/20 rounded-xl p-3">
                 <div className="flex justify-between text-sm mb-1">
