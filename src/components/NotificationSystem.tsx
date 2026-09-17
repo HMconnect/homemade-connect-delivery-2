@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Bell, X, Package, Truck, CheckCircle, Clock } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 interface Notification {
   id: string;
@@ -15,28 +17,93 @@ interface Notification {
   orderId?: string;
 }
 
+// The `notifications` table only stores title/message/is_read — there's no `type`
+// column — so we guess a friendlier icon from the title text. Falls back to the
+// generic bell icon when nothing matches.
+const inferType = (title: string): Notification['type'] => {
+  const t = title.toLowerCase();
+  if (t.includes('order')) return 'order';
+  if (t.includes('deliver') || t.includes('driver')) return 'delivery';
+  if (t.includes('bonus') || t.includes('payment') || t.includes('paid')) return 'payment';
+  return 'general';
+};
+
 export const NotificationSystem: React.FC = () => {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev => prev.map(n =>
-      n.id === id ? { ...n, read: true } : n
-    ));
-    setUnreadCount(prev => Math.max(0, prev - 1));
-  };
-
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    setUnreadCount(0);
-  };
-
-  const deleteNotification = (id: string) => {
-    const notification = notifications.find(n => n.id === id);
-    setNotifications(prev => prev.filter(n => n.id !== id));
-    if (notification && !notification.read) {
-      setUnreadCount(prev => Math.max(0, prev - 1));
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      return;
     }
+
+    const fetchNotifications = async () => {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (!error && data) {
+        setNotifications(data.map((n: any) => ({
+          id: n.id,
+          title: n.title,
+          message: n.message,
+          type: inferType(n.title || ''),
+          read: n.is_read,
+          createdAt: n.created_at,
+        })));
+      }
+    };
+
+    fetchNotifications();
+
+    // Live-update the bell when a new notification is written (e.g. an order
+    // status change or a welcome bonus) without needing a page refresh.
+    const channel = supabase
+      .channel(`notifications-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const n: any = payload.new;
+          setNotifications(prev => [{
+            id: n.id,
+            title: n.title,
+            message: n.message,
+            type: inferType(n.title || ''),
+            read: n.is_read,
+            createdAt: n.created_at,
+          }, ...prev]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const markAsRead = async (id: string) => {
+    setNotifications(prev => prev.map(n => (n.id === id ? { ...n, read: true } : n)));
+    await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+  };
+
+  const markAllAsRead = async () => {
+    const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    if (unreadIds.length > 0) {
+      await supabase.from('notifications').update({ is_read: true }).in('id', unreadIds);
+    }
+  };
+
+  const deleteNotification = async (id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+    await supabase.from('notifications').delete().eq('id', id);
   };
 
   const getNotificationIcon = (type: string) => {
