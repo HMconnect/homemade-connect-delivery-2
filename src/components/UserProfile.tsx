@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { User, Mail, Phone, MapPin, LogOut, MessageSquare } from 'lucide-react';
 import { LicenseUpload } from './LicenseUpload';
+import { displayPhone, formatUSPhoneInput, normalizeUSPhone } from '@/lib/phone';
 
 interface UserProfileProps {
   open: boolean;
@@ -22,13 +23,22 @@ export const UserProfile: React.FC<UserProfileProps> = ({ open, onClose }) => {
     const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [fullName, setFullName] = useState(profile?.full_name || '');
-  const [phone, setPhone] = useState(profile?.phone || '');
+  const [phone, setPhone] = useState(displayPhone(profile?.phone));
   const [address, setAddress] = useState(profile?.address || '');
   const [smsOptIn, setSmsOptIn] = useState(profile?.sms_opt_in || false);
   const { toast } = useToast();
 
   const handleSave = async () => {
-    await updateProfile({ full_name: fullName, phone, address, sms_opt_in: smsOptIn });
+    const normalized = normalizeUSPhone(phone);
+    if (!normalized) {
+      toast({ title: 'Check your phone number', description: 'Enter a 10-digit US phone number.', variant: 'destructive' });
+      return;
+    }
+    const { error } = await updateProfile({ full_name: fullName, phone: normalized, address, sms_opt_in: smsOptIn });
+    if (error) {
+      toast({ title: 'Could not save', description: 'Please try again.', variant: 'destructive' });
+      return;
+    }
     toast({ title: 'Success', description: 'Profile updated successfully.' });
     setEditing(false);
   };
@@ -83,7 +93,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ open, onClose }) => {
               </div>
               <div>
                 <Label htmlFor="phone">Phone Number</Label>
-                <Input id="phone" type="tel" placeholder="+1234567890" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                <Input id="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="(312) 555-0123" value={phone} onChange={(e) => setPhone(formatUSPhoneInput(e.target.value))} />
               </div>
               <div>
                 <Label htmlFor="address">Address</Label>
@@ -107,7 +117,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ open, onClose }) => {
           ) : (
             <>
               {profile?.full_name && <div className="flex items-center gap-2"><User className="w-4 h-4" /><span>{profile.full_name}</span></div>}
-              {profile?.phone && <div className="flex items-center gap-2"><Phone className="w-4 h-4" /><span>{profile.phone}</span></div>}
+              {profile?.phone && <div className="flex items-center gap-2"><Phone className="w-4 h-4" /><span>{displayPhone(profile.phone)}</span></div>}
               {profile?.address && <div className="flex items-center gap-2"><MapPin className="w-4 h-4" /><span>{profile.address}</span></div>}
               {profile?.sms_opt_in && <div className="flex items-center gap-2 text-green-600"><MessageSquare className="w-4 h-4" /><span className="text-sm">SMS notifications enabled</span></div>}
               <Button onClick={() => setEditing(true)} className="w-full">Edit Profile</Button>
