@@ -17,6 +17,7 @@ export interface Product {
   city: string;
   rating?: number;
   review_count?: number;
+  isSample?: boolean;
 }
 
 const FALLBACK_PRODUCTS: Product[] = [
@@ -147,7 +148,7 @@ export const useProducts = (state: string, city: string, searchQuery: string = '
 
         if (city) query = query.eq('city', city);
         if (category !== 'all') query = query.eq('category', category);
-        if (searchQuery) query = query.ilike('name', `%${searchQuery}%`);
+        if (searchQuery) query = query.ilike('product_name', `%${searchQuery}%`);
 
         const { data, error } = await query.order('created_at', { ascending: false });
 
@@ -156,7 +157,7 @@ export const useProducts = (state: string, city: string, searchQuery: string = '
           let filtered = FALLBACK_PRODUCTS;
           if (searchQuery) filtered = filtered.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
           if (category !== 'all') filtered = filtered.filter(p => p.category === category);
-          setProducts(filtered);
+          setProducts(filtered.map(p => ({ ...p, isSample: true })));
         } else {
           const mapped = data.map((p: any) => ({
             ...p,
@@ -165,11 +166,12 @@ export const useProducts = (state: string, city: string, searchQuery: string = '
             prep_time_min: p.prep_time_min || 20,
             prep_time_max: p.prep_time_max || 35,
             rating: p.rating || 4.5,
+            isSample: false,
           }));
           setProducts(mapped);
         }
       } catch {
-        setProducts(FALLBACK_PRODUCTS);
+        setProducts(FALLBACK_PRODUCTS.map(p => ({ ...p, isSample: true })));
       } finally {
         setLoading(false);
       }
