@@ -1,3 +1,4 @@
+import { SampleStamp } from './SampleStamp';
 import React, { useState } from 'react';
 import { Star, Clock, MapPin } from 'lucide-react';
 import { SampleVendorModal } from '@/components/SampleVendorModal';
@@ -55,15 +56,7 @@ export const VendorCard: React.FC<VendorCardProps> = ({ vendor, onClick }) => {
             className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${vendor.isSample ? 'opacity-75' : ''}`}
           />
           {/* SAMPLE stamp */}
-          {vendor.isSample && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="border-4 border-orange-400 rounded-xl px-4 py-2 rotate-[-20deg] bg-white/20 backdrop-blur-sm">
-                <span className="text-orange-500 font-black text-lg tracking-widest uppercase drop-shadow">
-                  Sample
-                </span>
-              </div>
-            </div>
-          )}
+          {vendor.isSample && <SampleStamp />}
         </div>
 
         {/* Content */}
