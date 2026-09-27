@@ -33,6 +33,7 @@ interface UserProfile {
   total_deliveries?: number;
   driver_rating?: number;
   is_online?: boolean;
+  sms_opt_in?: boolean;
 }
 
 interface AuthContextType {
@@ -40,13 +41,13 @@ interface AuthContextType {
   profile: UserProfile | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string, role?: string) => Promise<any>;
+  signUp: (email: string, password: string, fullName: string, role?: string, phone?: string) => Promise<any>;
   signIn: (email: string, password: string) => Promise<any>;
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signInWithFacebook: () => Promise<void>;
   resetPassword: (email: string) => Promise<any>;
-  updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<{ error: any }>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -152,12 +153,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user) await fetchProfile(user.id);
   };
 
-  const signUp = async (email: string, password: string, fullName: string, role = 'customer') => {
+  const signUp = async (email: string, password: string, fullName: string, role = 'customer', phone?: string) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { full_name: fullName, role },
+        data: { full_name: fullName, role, phone: phone || '' },
         emailRedirectTo: `${window.location.origin}/`,
       },
     });
@@ -208,12 +209,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
-    if (!user) return;
+    if (!user) return { error: new Error('Not signed in') };
     const { error } = await supabase
       .from('user_profiles')
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', user.id);
-    if (!error) await fetchProfile(user.id);
+    if (error) console.error('Profile update failed:', error.message);
+    else await fetchProfile(user.id);
+    return { error };
   };
 
   return (
