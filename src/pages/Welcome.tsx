@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import {
+import { formatUSPhoneInput, normalizeUSPhone } from '@/lib/phone';
+import { Phone,
   ChefHat, Mail, Lock, User, Eye, EyeOff,
   Car, ShoppingBag, Heart, ArrowRight,
   CheckCircle, AlertCircle
@@ -59,6 +60,7 @@ const Welcome: React.FC = () => {
 
   const [form, setForm] = useState({
     fullName: '',
+    phone: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -99,6 +101,7 @@ const Welcome: React.FC = () => {
     else if (form.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
     if (mode === 'signup') {
       if (!form.fullName) newErrors.fullName = 'Your name is required';
+      if (!normalizeUSPhone(form.phone)) newErrors.phone = 'Enter a 10-digit US phone number';
       if (form.password !== form.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
     }
     setErrors(newErrors);
@@ -132,7 +135,7 @@ const Welcome: React.FC = () => {
     if (!validate()) return;
     setLoading(true);
     try {
-      const { error } = await signUp(form.email, form.password, form.fullName, role);
+      const { error } = await signUp(form.email, form.password, form.fullName, role, normalizeUSPhone(form.phone) || undefined);
       if (error) {
         if (error.message?.includes('already registered')) {
           toast({
@@ -388,6 +391,29 @@ const Welcome: React.FC = () => {
                   />
                 </div>
                 {errors.fullName && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.fullName}</p>}
+              </div>
+            )}
+
+            {/* Phone — signup only */}
+            {mode === 'signup' && (
+              <div>
+                <Label htmlFor="signup-phone" className="text-xs font-semibold text-gray-600">Mobile Phone</Label>
+                <div className="relative mt-1">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    id="signup-phone"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    placeholder="(312) 555-0123"
+                    value={form.phone}
+                    onChange={e => updateForm('phone', formatUSPhoneInput(e.target.value))}
+                    className={`pl-9 h-11 rounded-xl ${errors.phone ? 'border-red-400' : 'border-gray-200'} focus:border-orange-400`}
+                  />
+                </div>
+                {errors.phone
+                  ? <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.phone}</p>
+                  : <p className="text-gray-400 text-xs mt-1">So your driver, cook or customer can reach you about orders.</p>}
               </div>
             )}
 
