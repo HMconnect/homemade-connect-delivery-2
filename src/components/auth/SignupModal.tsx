@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Mail, Lock, User, Chrome, Facebook } from 'lucide-react';
+import { Mail, Lock, User, Chrome, Facebook, Phone } from 'lucide-react';
+import { formatUSPhoneInput, normalizeUSPhone } from '@/lib/phone';
 
 interface SignupModalProps {
   open: boolean;
@@ -17,14 +18,20 @@ export const SignupModal: React.FC<SignupModalProps> = ({ open, onClose, onSwitc
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const { signUp, signInWithGoogle, signInWithFacebook } = useAuth();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const normalized = normalizeUSPhone(phone);
+    if (!normalized) {
+      toast({ title: 'Phone number needed', description: 'Enter a 10-digit US phone number.', variant: 'destructive' });
+      return;
+    }
     setLoading(true);
-    const { error } = await signUp(email, password, fullName);
+    const { error } = await signUp(email, password, fullName, 'customer', normalized);
     setLoading(false);
     
     if (error) {
@@ -47,6 +54,13 @@ export const SignupModal: React.FC<SignupModalProps> = ({ open, onClose, onSwitc
             <div className="relative">
               <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input id="fullName" placeholder="John Doe" className="pl-10" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="signup-modal-phone">Mobile Phone</Label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input id="signup-modal-phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="(312) 555-0123" className="pl-10" value={phone} onChange={(e) => setPhone(formatUSPhoneInput(e.target.value))} required />
             </div>
           </div>
           <div>
