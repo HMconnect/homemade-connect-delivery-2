@@ -1,3 +1,4 @@
+import { SampleStamp } from './SampleStamp';
 import React, { useState } from 'react';
 import { Star, Clock, MapPin } from 'lucide-react';
 import { StarRating } from './reviews/StarRating';
@@ -27,7 +28,7 @@ const FoodCard: React.FC<FoodCardProps> = ({
   prepTime,
   distance,
   description,
-  isSample = true,
+  isSample = false,
   onClick
 }) => {
   const [showNotice, setShowNotice] = useState(false);
@@ -60,11 +61,7 @@ const FoodCard: React.FC<FoodCardProps> = ({
           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
         />
         {isSample && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-            <span className="-rotate-12 rounded-lg border-4 border-red-500/70 bg-white/70 px-6 py-1 text-2xl font-extrabold tracking-widest text-red-500/80">
-              SAMPLE
-            </span>
-          </div>
+          <SampleStamp />
         )}
         <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full">
           <span className="text-sm font-semibold text-green-600">${price}</span>
