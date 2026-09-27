@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { X, Plus, Camera, DollarSign, Clock, ChefHat, Leaf, AlertTriangle } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 // ─── All categories including market items ───────────────────────────────────
 const FOOD_CATEGORIES = [
@@ -117,6 +118,38 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     customizations: product?.customizations || [] as CustomizationGroup[],
     special_instructions_allowed: product?.special_instructions_allowed ?? true,
   });
+
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+
+  // Upload a product photo to Supabase Storage (bucket: product-images, folder: <user id>)
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploadError('');
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError('Photo is too large (max 10MB). Try a smaller photo.');
+      return;
+    }
+    setUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Please sign in again.');
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const path = `${user.id}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage
+        .from('product-images')
+        .upload(path, file, { contentType: file.type || 'image/jpeg' });
+      if (error) throw error;
+      const { data } = supabase.storage.from('product-images').getPublicUrl(path);
+      setFormData(prev => ({ ...prev, image_url: data.publicUrl }));
+    } catch (err: any) {
+      setUploadError(err?.message || 'Upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const [activeStep, setActiveStep] = useState(1);
   const [newCustomGroup, setNewCustomGroup] = useState('');
@@ -330,6 +363,18 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                   />
                 </div>
               </div>
+              <label className={`mt-2 flex items-center justify-center gap-2 w-full rounded-lg border-2 border-dashed border-orange-300 bg-orange-50 py-3 text-sm font-semibold text-orange-600 ${uploading ? 'opacity-60' : 'cursor-pointer hover:bg-orange-100'}`}>
+                <Camera className="w-4 h-4" />
+                {uploading ? 'Uploading photo...' : formData.image_url ? 'Change photo' : 'Upload photo from phone or computer'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={handlePhotoUpload}
+                />
+              </label>
+              {uploadError && <p className="text-xs text-red-600 mt-1">{uploadError}</p>}
               {formData.image_url && (
                 <img src={formData.image_url} alt="Preview" className="mt-2 h-24 w-full object-cover rounded-lg border" />
               )}
