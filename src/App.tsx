@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LocationProvider } from "@/contexts/LocationContext";
+import PhoneRequiredPrompt from "@/components/auth/PhoneRequiredPrompt";
 import Index from "./pages/Index";
 import Welcome from "./pages/Welcome";
 import VendorApplication from "./pages/VendorApplication";
@@ -29,6 +30,7 @@ const App = () => (
           <LocationProvider>
             <Toaster />
             <Sonner />
+            <PhoneRequiredPrompt />
             <BrowserRouter>
               <Routes>
                 <Route path="/" element={<Index />} />
