@@ -1,3 +1,4 @@
+import { SampleStamp } from './SampleStamp';
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -57,11 +58,7 @@ export const MarketItemCard: React.FC<MarketItemCardProps> = ({
           onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1607006344380-b6775a0824a7?w=400'; }}
         />
         {isSample && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-            <span className="-rotate-12 rounded-lg border-4 border-red-500/70 bg-white/70 px-6 py-1 text-2xl font-extrabold tracking-widest text-red-500/80">
-              SAMPLE
-            </span>
-          </div>
+          <SampleStamp />
         )}
         <div className="absolute top-2 left-2">
           <Badge className="bg-white/90 text-gray-700 text-xs border-0 shadow-sm">
