@@ -246,14 +246,19 @@ const AppLayoutContent: React.FC = () => {
 
   const { products: supabaseProducts, loading } = useProducts(selectedState, selectedCity, searchQuery, selectedCategory);
 
-  // Use Supabase products if available, otherwise use extended sample set
-  const displayProducts = supabaseProducts.length > 3
-    ? supabaseProducts
-    : SAMPLE_PRODUCTS_EXTENDED.filter(p => {
-        const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
-        const matchesSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesCategory && matchesSearch;
-      });
+  // Real vendor products always show first. Until a city has 4+ real items,
+  // top up the feed with clearly stamped SAMPLE items so it doesn't look empty.
+  const realProducts = supabaseProducts.filter((p: any) => !p.isSample);
+  const sampleProducts = SAMPLE_PRODUCTS_EXTENDED
+    .filter(p => {
+      const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
+      const matchesSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesCategory && matchesSearch;
+    })
+    .map(p => ({ ...p, isSample: true }));
+  const displayProducts: any[] = realProducts.length > 3
+    ? realProducts
+    : [...realProducts, ...sampleProducts];
 
   const handlePaymentSuccess = (orderId: string) => {
     setCurrentOrderId(orderId);
@@ -512,6 +517,7 @@ const AppLayoutContent: React.FC = () => {
                     image={item.image_url}
                     category={item.category}
                     description={item.description}
+                    isSample={!!item.isSample}
                     onClick={() => handleAddToCart(item)}
                   />
                 ))}
@@ -563,6 +569,7 @@ const AppLayoutContent: React.FC = () => {
                       prepTime: vendor.deliveryTime,
                       distance: vendor.distance,
                       description: vendor.specialty,
+                      isSample: true,
                     }}
                     onClick={() => console.log('Vendor clicked:', vendor.name)}
                   />
