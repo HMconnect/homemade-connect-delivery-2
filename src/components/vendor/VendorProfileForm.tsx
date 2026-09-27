@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { displayPhone, formatUSPhoneInput, normalizeUSPhone } from '@/lib/phone';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,13 +17,19 @@ export const VendorProfileForm: React.FC = () => {
     business_address: profile?.business_address || '',
     business_phone: profile?.business_phone || '',
     full_name: profile?.full_name || '',
-    phone: profile?.phone || '',
+    phone: displayPhone(profile?.phone),
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const phone = normalizeUSPhone(formData.phone);
+    if (!phone) {
+      toast({ title: 'Check your phone number', description: 'Enter a 10-digit US personal phone number.', variant: 'destructive' });
+      return;
+    }
     try {
-      await updateProfile(formData);
+      const { error } = await updateProfile({ ...formData, phone });
+      if (error) throw error;
       toast({ title: 'Success', description: 'Profile updated successfully' });
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to update profile', variant: 'destructive' });
@@ -53,7 +60,7 @@ export const VendorProfileForm: React.FC = () => {
             </div>
             <div>
               <Label htmlFor="phone">Personal Phone</Label>
-              <Input id="phone" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
+              <Input id="phone" value={formData.phone} type="tel" inputMode="tel" placeholder="(312) 555-0123" onChange={(e) => setFormData({...formData, phone: formatUSPhoneInput(e.target.value)})} />
             </div>
           </div>
 
@@ -68,3 +75,4 @@ export const VendorProfileForm: React.FC = () => {
     </Card>
   );
 };
+
