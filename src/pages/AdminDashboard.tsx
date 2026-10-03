@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { ApplicationCard } from '@/components/admin/ApplicationCard';
 import { SMSLogsTable } from '@/components/admin/SMSLogsTable';
+import { DriverEligibilityTab } from '@/components/admin/DriverEligibilityTab';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -88,6 +89,7 @@ export default function AdminDashboard() {
         <Tabs defaultValue="applications" className="w-full">
           <TabsList className="mb-6">
             <TabsTrigger value="applications">Vendor Applications</TabsTrigger>
+            <TabsTrigger value="drivers">Driver Eligibility</TabsTrigger>
             <TabsTrigger value="sms">SMS Logs</TabsTrigger>
           </TabsList>
 
@@ -123,6 +125,10 @@ export default function AdminDashboard() {
                 <ApplicationCard key={app.id} application={app} onUpdate={fetchApplications} />
               ))}
             </div>
+          </TabsContent>
+
+          <TabsContent value="drivers">
+            <DriverEligibilityTab />
           </TabsContent>
 
           <TabsContent value="sms">
