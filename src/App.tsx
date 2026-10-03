@@ -14,6 +14,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminSetup from "./pages/AdminSetup";
 import VendorDashboard from "./pages/VendorDashboard";
 import DriverDashboard from "./pages/DriverDashboard";
+import DriverCurbside from "./pages/DriverCurbside";
 import VendorProfile from "./pages/VendorProfile";
 import HowPaymentsWork from "./pages/HowPaymentsWork";
 import NotFound from "./pages/NotFound";
@@ -40,6 +41,7 @@ const App = () => (
                 <Route path="/admin-setup" element={<AdminSetup />} />
                 <Route path="/vendor-dashboard" element={<VendorDashboard />} />
                 <Route path="/driver" element={<DriverDashboard />} />
+                <Route path="/driver/curbside" element={<DriverCurbside />} />
                 <Route path="/vendor/:id" element={<VendorProfile />} />
                 <Route path="/payments" element={<HowPaymentsWork />} />
                 <Route path="*" element={<NotFound />} />
