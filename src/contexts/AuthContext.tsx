@@ -34,6 +34,7 @@ interface UserProfile {
   driver_rating?: number;
   is_online?: boolean;
   sms_opt_in?: boolean;
+  curbside_status?: 'none' | 'pending' | 'approved' | 'denied';
 }
 
 interface AuthContextType {
