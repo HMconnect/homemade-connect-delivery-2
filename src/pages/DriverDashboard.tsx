@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
+import { CurbsideStatusCard } from '@/components/driver/CurbsideStatusCard';
 import {
   Car, MapPin, DollarSign, Star, Clock, ChefHat,
   CheckCircle, Package, Truck, Bell, TrendingUp,
@@ -176,6 +177,9 @@ const DriverDashboard: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Senior & Disability Curbside Protocol */}
+        <CurbsideStatusCard />
 
         {/* Active order delivery flow */}
         {activeOrder && (
