@@ -1,753 +1,555 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { useLocation } from '@/contexts/LocationContext';
-import { useProducts } from '@/hooks/useProducts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Search, ShoppingCart, User, Clock, Filter, ShoppingBag, Shield, ChefHat, Star, Truck, Heart, Globe } from 'lucide-react';
-import { FoodCard } from './FoodCard';
-import { VendorCard } from './VendorCard';
-import { CartSheet } from './Cart';
-import { OrderTracking } from './OrderTracking';
-import { PaymentForm } from './PaymentForm';
-import { CustomerOrdersView } from './CustomerOrdersView';
-import { NotificationSystem } from './NotificationSystem';
-import { UserProfile } from './UserProfile';
-import { LocationSelector } from './LocationSelector';
-import { CommunityShowcase } from './CommunityShowcase';
-import { MarketShowcase } from './MarketShowcase';
-import { MarketItemCard } from './MarketItemCard';
-import { CartProvider, useCart } from '@/contexts/CartContext';
-import { CUSTOMER_TIERS } from '@/lib/constants';
-import { COMMUNITIES, MARKET_CATEGORIES, SAMPLE_MARKET_PRODUCTS } from '@/lib/communities';
+import { Label } from '@/components/ui/label';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { formatUSPhoneInput, normalizeUSPhone } from '@/lib/phone';
+import { Phone,
+  ChefHat, Mail, Lock, User, Eye, EyeOff,
+  Car, ShoppingBag, Heart, ArrowRight,
+  CheckCircle, AlertCircle
+} from 'lucide-react';
 
-const VENDORS_FALLBACK = [
+type Mode = 'landing' | 'login' | 'signup';
+type Role = 'customer' | 'vendor' | 'driver';
+
+const COMMUNITY_SCRIPTS = [
+  '家常菜', 'घर का खाना', 'בית מטבח', 'مطبخ البيت',
+  'Sabor Latino', 'Irie Kitchen', 'Ìdáná Ilé', 'อาหารบ้าน'
+];
+
+const ROLE_OPTIONS = [
   {
-    id: '1',
-    name: "Big Mama's Kitchen",
-    image: 'https://d64gsuwffb70l.cloudfront.net/68da9d653efb6b8fad30f591_1759157961039_47ed3af4.webp',
-    rating: 4.9,
-    deliveryTime: '25-40 min',
-    distance: '0.8 mi',
-    specialty: 'Soul Food & Southern Comfort',
-    isPartner: true,
-    tier: 'kitchen',
-    community: 'soul-food',
-    badge: '🍗 Soul Food',
+    role: 'customer' as Role,
+    emoji: '🛍️',
+    title: 'Order Food & Shop',
+    description: 'Browse and order from local home cooks and makers',
+    color: 'border-orange-400 bg-orange-50',
+    activeColor: 'bg-orange-500',
   },
   {
-    id: '2',
-    name: "Abuela Rosa's Kitchen",
-    image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=400',
-    rating: 4.9,
-    deliveryTime: '20-35 min',
-    distance: '1.5 mi',
-    specialty: 'Traditional Mexican — Tamales & Mole',
-    isPartner: true,
-    tier: 'coop',
-    community: 'latin',
-    badge: '🌮 Latino',
+    role: 'vendor' as Role,
+    emoji: '👩‍🍳',
+    title: 'Sell My Food or Goods',
+    description: 'List your homemade food, crafts, beauty products & more',
+    color: 'border-green-400 bg-green-50',
+    activeColor: 'bg-green-500',
   },
   {
-    id: '3',
-    name: "Mama T's Caribbean",
-    image: 'https://d64gsuwffb70l.cloudfront.net/68da9d653efb6b8fad30f591_1759157963467_ead004fc.webp',
-    rating: 5.0,
-    deliveryTime: '30-45 min',
-    distance: '1.2 mi',
-    specialty: 'Jerk Chicken, Oxtail & Caribbean Classics',
-    isPartner: true,
-    tier: 'kitchen',
-    community: 'caribbean',
-    badge: '🌴 Caribbean',
-  },
-  {
-    id: '4',
-    name: "Chen's Dumpling House",
-    image: 'https://images.unsplash.com/photo-1563245372-f21724e3856d?w=400',
-    rating: 4.8,
-    deliveryTime: '20-30 min',
-    distance: '0.9 mi',
-    specialty: 'Handmade Dumplings & Chinese Home Cooking',
-    isPartner: false,
-    tier: 'basic',
-    community: 'east-asian',
-    badge: '家常菜 East Asian',
-  },
-  {
-    id: '5',
-    name: "Priya's Desi Kitchen",
-    image: 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=400',
-    rating: 4.9,
-    deliveryTime: '25-40 min',
-    distance: '1.1 mi',
-    specialty: 'Authentic Biryani, Curry & Indian Street Food',
-    isPartner: false,
-    tier: 'coop',
-    community: 'south-asian',
-    badge: '🍛 Desi',
-  },
-  {
-    id: '6',
-    name: "Miriam's Kosher Kitchen",
-    image: 'https://images.unsplash.com/photo-1533007716222-4b465613a984?w=400',
-    rating: 4.7,
-    deliveryTime: '25-35 min',
-    distance: '2.0 mi',
-    specialty: 'Kosher-Certified Brisket, Challah & Jewish Classics',
-    isPartner: false,
-    tier: 'basic',
-    community: 'jewish-kosher',
-    badge: '✡️ Kosher',
+    role: 'driver' as Role,
+    emoji: '🚗',
+    title: 'Drive & Earn',
+    description: 'Deliver orders and earn flexible income in your community',
+    color: 'border-blue-400 bg-blue-50',
+    activeColor: 'bg-blue-500',
   },
 ];
 
-const SAMPLE_PRODUCTS_EXTENDED = [
-  {
-    id: 'sourdough',
-    name: 'Artisan Sourdough Bread',
-    vendor_name: "Sarah's Kitchen",
-    price: 8.50, rating: 4.9,
-    prep_time_min: 25, prep_time_max: 35,
-    image_url: 'https://d64gsuwffb70l.cloudfront.net/68da9d653efb6b8fad30f591_1759157952729_583c4d9c.webp',
-    category: 'bakery',
-    description: 'Handcrafted sourdough with a perfect crust',
-  },
-  {
-    id: 'soul-plate',
-    name: 'Sunday Soul Food Plate',
-    vendor_name: "Big Mama's Kitchen",
-    price: 20.00, rating: 4.9,
-    prep_time_min: 35, prep_time_max: 50,
-    image_url: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=400',
-    category: 'soul-food',
-    description: 'Fried chicken, mac & cheese, collard greens & cornbread',
-  },
-  {
-    id: 'tamales',
-    name: 'Homemade Tamales (6 pack)',
-    vendor_name: "Abuela Rosa's Kitchen",
-    price: 16.00, rating: 4.9,
-    prep_time_min: 20, prep_time_max: 35,
-    image_url: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=400',
-    category: 'latin',
-    description: 'Traditional pork tamales wrapped in corn husks, made fresh daily',
-  },
-  {
-    id: 'jerk-chicken',
-    name: 'Jerk Chicken Plate',
-    vendor_name: "Mama T's Caribbean",
-    price: 18.00, rating: 5.0,
-    prep_time_min: 30, prep_time_max: 45,
-    image_url: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400',
-    category: 'caribbean',
-    description: 'Authentic jerk chicken with rice & peas and plantains',
-  },
-  {
-    id: 'dumplings',
-    name: 'Handmade Pork Dumplings (12 pcs)',
-    vendor_name: "Chen's Dumpling House",
-    price: 14.00, rating: 4.8,
-    prep_time_min: 20, prep_time_max: 30,
-    image_url: 'https://images.unsplash.com/photo-1563245372-f21724e3856d?w=400',
-    category: 'east-asian',
-    description: 'Traditional hand-folded dumplings with ginger pork filling',
-  },
-  {
-    id: 'biryani',
-    name: 'Chicken Biryani',
-    vendor_name: "Priya's Desi Kitchen",
-    price: 17.00, rating: 4.9,
-    prep_time_min: 30, prep_time_max: 45,
-    image_url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400',
-    category: 'south-asian',
-    description: 'Aromatic basmati rice with tender chicken and whole spices',
-  },
-  {
-    id: 'challah',
-    name: 'Fresh Baked Challah',
-    vendor_name: "Miriam's Kosher Kitchen",
-    price: 12.00, rating: 4.7,
-    prep_time_min: 25, prep_time_max: 40,
-    image_url: 'https://images.unsplash.com/photo-1534620808146-d33bb39128b2?w=400',
-    category: 'jewish-kosher',
-    description: 'Traditional braided challah, baked fresh every Friday',
-  },
-  {
-    id: 'falafel',
-    name: 'Falafel Plate with Hummus',
-    vendor_name: "Fatima's Middle Eastern Kitchen",
-    price: 15.00, rating: 4.8,
-    prep_time_min: 20, prep_time_max: 30,
-    image_url: 'https://images.unsplash.com/photo-1529543544282-ea669407fca3?w=400',
-    category: 'middle-eastern',
-    description: 'Crispy homemade falafel with house hummus and fresh pita',
-  },
-  {
-    id: 'jollof',
-    name: 'Party Jollof Rice',
-    vendor_name: "Auntie Ade's Kitchen",
-    price: 19.00, rating: 5.0,
-    prep_time_min: 35, prep_time_max: 50,
-    image_url: 'https://images.unsplash.com/photo-1604329760661-e71dc83f8f26?w=400',
-    category: 'west-african',
-    description: 'Nigerian party jollof rice with chicken and fried plantains',
-  },
-  {
-    id: 'pad-thai',
-    name: 'Homemade Pad Thai',
-    vendor_name: "Nong's Thai Kitchen",
-    price: 16.00, rating: 4.8,
-    prep_time_min: 20, prep_time_max: 35,
-    image_url: 'https://images.unsplash.com/photo-1559314809-0d155014e29e?w=400',
-    category: 'southeast-asian',
-    description: 'Authentic pad thai with shrimp, bean sprouts and crushed peanuts',
-  },
-  {
-    id: 'pierogi',
-    name: 'Handmade Pierogis (dozen)',
-    vendor_name: "Babcia's Polish Kitchen",
-    price: 18.00, rating: 4.7,
-    prep_time_min: 25, prep_time_max: 40,
-    image_url: 'https://images.unsplash.com/photo-1546833998-877b37c2e5c6?w=400',
-    category: 'eastern-european',
-    description: 'Potato & cheese pierogis, boiled then pan-fried in butter',
-  },
-  {
-    id: 'vegan-bowl',
-    name: 'Rainbow Grain Bowl',
-    vendor_name: "Green Soul Kitchen",
-    price: 14.00, rating: 4.6,
-    prep_time_min: 15, prep_time_max: 25,
-    image_url: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400',
-    category: 'vegan',
-    description: 'Quinoa, roasted veggies, avocado & tahini dressing',
-  },
-];
-
-const AppLayoutContent: React.FC = () => {
+const Welcome: React.FC = () => {
   const navigate = useNavigate();
-  const { profile } = useAuth();
-  const { selectedState, selectedCity, stateLabel } = useLocation();
-  const [showPayment, setShowPayment] = useState(false);
-  const [showOrderTracking, setShowOrderTracking] = useState(false);
-  const [showOrderHistory, setShowOrderHistory] = useState(false);
-  const [showSubscription, setShowSubscription] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);  
-  const [currentOrderId, setCurrentOrderId] = useState<string>('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('delivery');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const { addToCart } = useCart();
+  const { signIn, signUp, signInWithGoogle, signInWithFacebook, user, profile } = useAuth();
+  const { toast } = useToast();
+  const [mode, setMode] = useState<Mode>('landing');
+  const [role, setRole] = useState<Role>('customer');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [scriptIndex, setScriptIndex] = useState(0);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const { products: supabaseProducts, loading } = useProducts(selectedState, selectedCity, searchQuery, selectedCategory);
+  const [form, setForm] = useState({
+    fullName: '',
+    phone: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
 
-  // Real vendor products always show first. Until a city has 4+ real items,
-  // top up the feed with clearly stamped SAMPLE items so it doesn't look empty.
-  const realProducts = supabaseProducts.filter((p: any) => !p.isSample);
-  const sampleProducts = SAMPLE_PRODUCTS_EXTENDED
-    .filter(p => {
-      const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
-      const matchesSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCategory && matchesSearch;
-    })
-    .map(p => ({ ...p, isSample: true }));
-  const displayProducts: any[] = realProducts.length > 3
-    ? realProducts
-    : [...realProducts, ...sampleProducts];
+  // Deep link: /welcome?join=driver|vendor|customer opens sign-up with that role selected
+  useEffect(() => {
+    const join = new URLSearchParams(window.location.search).get('join');
+    if (join === 'driver' || join === 'vendor' || join === 'customer') {
+      setRole(join);
+      setMode('signup');
+    }
+  }, []);
 
-  const handlePaymentSuccess = (orderId: string) => {
-    setCurrentOrderId(orderId);
-    setShowPayment(false);
-    setShowOrderTracking(true);
+  // Rotate cultural scripts
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setScriptIndex(i => (i + 1) % COMMUNITY_SCRIPTS.length);
+    }, 2000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user && profile) {
+      redirectByRole(profile.role);
+    }
+  }, [user, profile]);
+
+  const redirectByRole = (userRole: string) => {
+    if (userRole === 'vendor' && profile?.application_status === 'approved') {
+      navigate('/vendor-dashboard');
+    } else if (userRole === 'driver') {
+      navigate('/driver');
+    } else if (userRole === 'admin' || profile?.is_admin) {
+      navigate('/admin');
+    } else {
+      navigate('/');
+    }
   };
 
-  const handleAddToCart = (item: any) => {
-    addToCart({
-      foodItemId: item.id,
-      foodName: item.name,
-      vendorName: item.vendor_name || item.vendor,
-      price: item.price,
-      quantity: 1,
-      imageUrl: item.image_url || item.image,
-    });
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!form.email) newErrors.email = 'Email is required';
+    else if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = 'Enter a valid email';
+    if (!form.password) newErrors.password = 'Password is required';
+    else if (form.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
+    if (mode === 'signup') {
+      if (!form.fullName) newErrors.fullName = 'Your name is required';
+      if (!normalizeUSPhone(form.phone)) newErrors.phone = 'Enter a 10-digit US phone number';
+      if (form.password !== form.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  const filteredVendors = selectedCategory === 'all'
-    ? VENDORS_FALLBACK
-    : VENDORS_FALLBACK.filter(v => v.community === selectedCategory);
+  const handleLogin = async () => {
+    if (!validate()) return;
+    setLoading(true);
+    try {
+      const { error } = await signIn(form.email, form.password);
+      if (error) {
+        toast({
+          title: 'Login Failed',
+          description: error.message === 'Invalid login credentials'
+            ? 'Email or password is incorrect. Please try again.'
+            : error.message,
+          variant: 'destructive'
+        });
+      } else {
+        toast({ title: '👋 Welcome back!', description: 'You are now signed in.' });
+      }
+    } catch {
+      toast({ title: 'Something went wrong', description: 'Please try again.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Get community info for selected category
-  const activeCommunity = COMMUNITIES.find(c => c.category === selectedCategory);
+  const handleSignup = async () => {
+    if (!validate()) return;
+    setLoading(true);
+    try {
+      const { error } = await signUp(form.email, form.password, form.fullName, role, normalizeUSPhone(form.phone) || undefined);
+      if (error) {
+        if (error.message?.includes('already registered')) {
+          toast({
+            title: 'Email already registered',
+            description: 'This email has an account. Try signing in instead.',
+            variant: 'destructive'
+          });
+          setMode('login');
+        } else {
+          toast({ title: 'Signup Failed', description: error.message, variant: 'destructive' });
+        }
+      } else {
+        toast({
+          title: '🎉 Welcome to Homemade Connect!',
+          description: role === 'vendor'
+            ? 'Account created! Let\'s set up your vendor profile.'
+            : role === 'driver'
+            ? 'Account created! You can now start accepting deliveries.'
+            : 'Account created! Start browsing local home cooks.',
+        });
+        // Redirect based on role
+        setTimeout(() => {
+          if (role === 'vendor') navigate('/vendor-application');
+          else if (role === 'driver') navigate('/driver');
+          else navigate('/');
+        }, 1000);
+      }
+    } catch {
+      toast({ title: 'Something went wrong', description: 'Please try again.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-sm">
-                <ChefHat className="w-5 h-5 text-white" />
-              </div>
-              <div className="hidden sm:block">
-                <span className="font-bold text-lg text-gray-900 leading-tight">Homemade Connect</span>
-                <span className="block text-xs text-orange-500 font-medium leading-tight">Delivery</span>
-              </div>
-              <span className="sm:hidden font-bold text-base text-gray-900">HMC</span>
-            </div>
+  const handleGoogleLogin = async () => {
+    try {
+      await signInWithGoogle();
+    } catch {
+      toast({ title: 'Google login failed', variant: 'destructive' });
+    }
+  };
 
-            <LocationSelector />
+  const handleFacebookLogin = async () => {
+    try {
+      await signInWithFacebook();
+    } catch {
+      toast({ title: 'Facebook login failed', variant: 'destructive' });
+    }
+  };
 
-            <div className="flex items-center gap-1">
-              <NotificationSystem />
-              {(profile?.role === 'admin' || profile?.is_admin) && (
-                <Button variant="ghost" size="sm" onClick={() => navigate('/admin')}>
-                  <Shield className="h-5 w-5 text-blue-600" />
-                </Button>
-              )}
-              {profile?.role === 'vendor' && profile?.application_status === 'approved' && (
-                <Button variant="ghost" size="sm" onClick={() => navigate('/vendor-dashboard')}>
-                  <ShoppingBag className="h-5 w-5 text-green-600" />
-                </Button>
-              )}
-              <CartSheet>
-                <Button variant="ghost" size="sm">
-                  <ShoppingCart className="h-5 w-5" />
-                </Button>
-              </CartSheet>
-              <Button variant="ghost" size="sm" onClick={() => setShowOrderHistory(true)}>
-                <Clock className="h-5 w-5" />
-              </Button>
-                <Button variant="ghost" size="sm" onClick={() => setShowProfile(true)}>  
-                <User className="w-5 h-5" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-        
-      {/* Hero — dynamically changes when a community is selected */}
-      <section className={`relative bg-gradient-to-br overflow-hidden ${
-        activeCommunity ? activeCommunity.color : 'from-orange-500 via-red-500 to-pink-600'
-      }`}>
+  const updateForm = (field: string, value: string) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
+  };
+
+  // ── LANDING PAGE ─────────────────────────────────────────────────────────────
+  if (mode === 'landing') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-500 via-red-500 to-pink-600 flex flex-col relative overflow-hidden">
         <div className="absolute inset-0 opacity-5"
-          style={{backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '24px 24px'}} />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <div className="max-w-2xl">
-            {activeCommunity ? (
-              // Community-specific hero
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-5xl">{activeCommunity.emoji}</span>
-                  <div>
-                    <div className="text-white/80 text-sm font-medium">{activeCommunity.description}</div>
-                    {/* Native script display */}
-                    <div className="text-white font-bold text-2xl" style={{
-                      fontFamily: 'serif',
-                      textShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                    }}>
-                      {activeCommunity.script}
-                    </div>
-                  </div>
-                </div>
-                <h1 className="text-3xl font-bold text-white mb-2">
-                  {activeCommunity.name} Home Cooks
-                </h1>
-                <p className="text-white/90 text-sm mb-4">
-                  Authentic {activeCommunity.name} cooking made by community members in {selectedCity}
-                </p>
-                <div className="flex flex-wrap gap-2 mb-5">
-                  {activeCommunity.sampleDishes.map(dish => (
-                    <span key={dish} className="bg-white/20 text-white text-xs px-3 py-1 rounded-full border border-white/30">
-                      {dish}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              // Default hero
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Badge className="bg-white/20 text-white border-white/30 text-xs">
-                    <Globe className="w-3 h-3 mr-1" />
-                    {COMMUNITIES.length} Cultural Communities in {selectedCity}
-                  </Badge>
-                </div>
-                <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2 leading-tight">
-                  Every Culture.<br />Every Flavor.<br />One Community.
-                </h1>
-                <p className="text-white/90 text-sm mb-4">
-                  Authentic homemade food from Black, Latino, Asian, Jewish, Desi, Caribbean, African & more home cooks in {stateLabel}.
-                </p>
+          style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+           {/* Pinned Sign In button — always visible on load, no scrolling needed */}
+        <button
+          onClick={() => setMode('login')}
+          className="fixed top-4 right-4 z-50 bg-white/20 hover:bg-white/30 text-white text-sm font-bold px-4 py-2 rounded-full backdrop-blur-sm border border-white/30"
+        >
+          Sign In
+        </button>     
 
-                {/* Cultural script sampler */}
-                <div className="flex flex-wrap gap-3 mb-5">
-                  {['家常菜', 'घर का खाना', 'בית מטבח', 'مطبخ البيت', 'Sabor Latino', 'Irie Kitchen'].map((script, i) => (
-                    <span key={i} className="bg-white/15 text-white/90 text-sm px-3 py-1 rounded-full border border-white/20" style={{fontFamily: 'serif'}}>
-                      {script}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <div className="flex items-center gap-4 text-white/90">
-                    <span className="text-center"><div className="text-xl font-bold">12+</div><div className="text-xs">Communities</div></span>
-                    <span className="w-px h-8 bg-white/30" />
-                    <span className="text-center"><div className="text-xl font-bold">4</div><div className="text-xs">States</div></span>
-                    <span className="w-px h-8 bg-white/30" />
-                    <span className="text-center"><div className="text-xl font-bold">$0</div><div className="text-xs">Delivery w/ Membership</div></span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-3 mt-5">
-              <Button
-                onClick={() => setShowSubscription(true)}
-                className="bg-white text-orange-600 hover:bg-orange-50 font-semibold shadow-lg"
-              >
-                <Heart className="w-4 h-4 mr-2" />
-                Join the Co-op
-              </Button>
-              <Button
-                variant="outline"
-                className="border-white text-white hover:bg-white/10"
-                onClick={() => navigate('/vendor-application')}
-              >
-                <ChefHat className="w-4 h-4 mr-2" />
-                Become a Vendor
-              </Button>
+        <div className="relative flex-1 flex flex-col items-center justify-center px-6 py-12">
+          {/* Logo */}
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-24 h-24 bg-white/20 rounded-3xl flex items-center justify-center mb-5 shadow-2xl backdrop-blur-sm border border-white/30">
+              <ChefHat className="w-12 h-12 text-white" />
             </div>
-          </div>
-        </div>
-      </section>
+            <h1 className="text-4xl font-black text-white text-center leading-tight">
+              Homemade Connect
+            </h1>
+            <p className="text-2xl font-bold text-white/90 mt-1">Delivery</p>
 
-      {/* Trust bar */}
-      <div className="bg-orange-50 border-b border-orange-100">
-        <div className="max-w-7xl mx-auto px-4 py-2 flex items-center justify-center gap-6 text-xs text-orange-700 flex-wrap">
-          <span className="flex items-center gap-1"><Star className="w-3 h-3 fill-orange-400 text-orange-400" /> Verified Home Cooks</span>
-          <span className="flex items-center gap-1"><Truck className="w-3 h-3" /> Fast Local Delivery</span>
-          <span className="flex items-center gap-1">✡️ Kosher Available</span>
-          <span className="flex items-center gap-1">🌙 Halal Available</span>
-          <span className="flex items-center gap-1">🌱 Vegan Available</span>
-          <span className="flex items-center gap-1">🏘️ IL • GA • WI • MI</span>
+            {/* Rotating cultural script */}
+            <div className="mt-3 h-8 flex items-center">
+              <p className="text-white/70 text-lg transition-all duration-500"
+                style={{ fontFamily: 'serif' }}>
+                {COMMUNITY_SCRIPTS[scriptIndex]}
+              </p>
+            </div>
+
+            <p className="text-white/80 text-center mt-3 text-base leading-relaxed max-w-xs">
+              Fresh homemade food & handcrafted goods from your neighbors — delivered same day
+            </p>
+          </div>
+
+          {/* Stats */}
+          <div className="flex gap-8 mb-8">
+            {[
+              { value: '12+', label: 'Communities' },
+              { value: '4', label: 'States' },
+              { value: '$0', label: 'Delivery w/ Plan' },
+            ].map((stat, i) => (
+              <div key={i} className="text-center">
+                <p className="text-3xl font-black text-white">{stat.value}</p>
+                <p className="text-white/70 text-xs">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Role cards */}
+          <div className="w-full max-w-sm space-y-2 mb-6">
+            {ROLE_OPTIONS.map(({ role: r, emoji, title }) => (
+              <button
+                key={r}
+                onClick={() => { setRole(r); setMode('signup'); }}
+                className="w-full bg-white/15 hover:bg-white/25 border border-white/30 rounded-2xl px-4 py-3 flex items-center gap-3 text-left transition-all"
+              >
+                <span className="text-2xl">{emoji}</span>
+                <span className="text-white font-semibold">{title}</span>
+                <ArrowRight className="w-4 h-4 text-white/70 ml-auto" />
+              </button>
+            ))}
+          </div>
+
+          {/* Sign in link */}
+          <p className="text-white/80 text-sm">
+            Already have an account?{' '}
+            <button onClick={() => setMode('login')} className="text-white font-bold underline">
+              Sign in
+            </button>
+          </p>
+        </div>
+
+        {/* Footer */}
+        <div className="relative bg-black/20 backdrop-blur-sm px-6 py-3 text-center">
+          <p className="text-white/70 text-xs">
+            🏘️ Serving Illinois · Georgia · Wisconsin · Michigan
+          </p>
+          <p className="text-white/50 text-xs mt-0.5">
+            www.homemadeconnectdelivery.com · info@homemadeconnectdelivery.com
+          </p>
         </div>
       </div>
+    );
+  }
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  // ── LOGIN / SIGNUP ────────────────────────────────────────────────────────────
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-orange-500 via-red-500 to-pink-600 flex flex-col relative">
+      <div className="absolute inset-0 opacity-5"
+        style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
 
-        {/* Search */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <Input
-              placeholder={`Search tamales, biryani, jollof rice in ${selectedCity}...`}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 border-gray-200 focus:border-orange-400"
-            />
+      <div className="relative flex-1 flex items-center justify-center px-4 py-8">
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden">
+
+          {/* Card header */}
+          <div className="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-5 text-center">
+            <ChefHat className="w-8 h-8 text-white mx-auto mb-2" />
+            <h2 className="text-xl font-black text-white">
+              {mode === 'login' ? 'Welcome Back!' : 'Join Homemade Connect'}
+            </h2>
+            <p className="text-white/80 text-sm mt-0.5">
+              {mode === 'login' ? 'Sign in to your account' : 'Create your free account'}
+            </p>
           </div>
-          <Button variant="outline" className="flex items-center gap-2">
-            <Filter className="w-4 h-4" />
-            Filters
-          </Button>
-        </div>
 
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3 max-w-sm bg-orange-50 mb-6">
-            <TabsTrigger value="delivery" className="data-[state=active]:bg-orange-500 data-[state=active]:text-white">
-              🍽️ Food
-            </TabsTrigger>
-            <TabsTrigger value="vendors" className="data-[state=active]:bg-orange-500 data-[state=active]:text-white">
-              👩‍🍳 Vendors
-            </TabsTrigger>
-            <TabsTrigger value="market" className="data-[state=active]:bg-orange-500 data-[state=active]:text-white">
-              🛍️ Market
-            </TabsTrigger>
-          </TabsList>
+          <div className="p-5 space-y-4">
+            {/* Sign In / Create Account switch — always visible, no scrolling needed */}
+            <div className="flex bg-gray-100 rounded-xl p-1">
+              <button
+                type="button"
+                onClick={() => { setMode('login'); setErrors({}); }}
+                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
+                  mode === 'login' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500'
+                }`}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode('signup'); setErrors({}); }}
+                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
+                  mode === 'signup' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500'
+                }`}
+              >
+                Create Account
+              </button>
+            </div>            
 
-          <TabsContent value="delivery">
-            {/* Cultural Community Showcase */}
-            <CommunityShowcase
-              onSelectCategory={setSelectedCategory}
-              selectedCategory={selectedCategory}
-            />
-
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-900">
-                {loading ? 'Loading...' : `${displayProducts.length} dishes ${activeCommunity ? `from ${activeCommunity.name} cooks` : 'near you'} in ${selectedCity}`}
-              </h2>
-              {selectedCategory !== 'all' && (
-                <button
-                  onClick={() => setSelectedCategory('all')}
-                  className="text-xs text-orange-600 hover:underline"
-                >
-                  Clear filter
-                </button>
-              )}
+            {/* Social login buttons */}
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" onClick={handleGoogleLogin}
+                className="h-10 rounded-xl border-gray-200 text-sm">
+                <svg className="w-4 h-4 mr-1.5" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Google
+              </Button>
+              <Button variant="outline" onClick={handleFacebookLogin}
+                className="h-10 rounded-xl border-gray-200 text-sm">
+                <svg className="w-4 h-4 mr-1.5 fill-blue-600" viewBox="0 0 24 24">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+                Facebook
+              </Button>
             </div>
 
-            {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {[1,2,3,4].map(i => (
-                  <div key={i} className="bg-white rounded-xl h-64 animate-pulse border" />
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {displayProducts.map((item: any) => (
-                  <FoodCard
-                    key={item.id}
-                    id={item.id}
-                    name={item.name}
-                    vendor={item.vendor_name}
-                    price={item.price}
-                    rating={item.rating || 4.5}
-                    deliveryTime={`${item.prep_time_min}-${item.prep_time_max} min`}
-                    prepTime={`${item.prep_time_min}-${item.prep_time_max} min`}
-                    distance="Nearby"
-                    image={item.image_url}
-                    category={item.category}
-                    description={item.description}
-                    isSample={!!item.isSample}
-                    onClick={() => handleAddToCart(item)}
-                  />
-                ))}
-                {displayProducts.length === 0 && (
-                  <div className="col-span-4 text-center py-16">
-                    <span className="text-5xl mb-3 block">{activeCommunity?.emoji || '🍽️'}</span>
-                    <p className="text-gray-500 font-medium">
-                      No {activeCommunity?.name || ''} vendors yet in {selectedCity}
-                    </p>
-                    <p className="text-gray-400 text-sm mt-1">Know a great home cook? Invite them!</p>
-                    <Button className="mt-4 bg-orange-500 hover:bg-orange-600" onClick={() => navigate('/vendor-application')}>
-                      Apply as a Vendor
-                    </Button>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-gray-100" />
+              <span className="text-xs text-gray-400">or with email</span>
+              <div className="flex-1 h-px bg-gray-100" />
+            </div>
+
+            {/* Role selection — signup only */}
+            {mode === 'signup' && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-gray-600">I am joining as a...</Label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {ROLE_OPTIONS.map(({ role: r, emoji, title }) => (
+                    <button key={r} type="button" onClick={() => setRole(r)}
+                      className={`p-2 rounded-xl border-2 text-center transition-all ${
+                        role === r ? 'border-orange-500 bg-orange-50 shadow-sm' : 'border-gray-200 hover:border-orange-300'
+                      }`}>
+                      <div className="text-xl mb-0.5">{emoji}</div>
+                      <div className="text-xs font-medium text-gray-700 leading-tight">
+                        {r === 'customer' ? 'Customer' : r === 'vendor' ? 'Vendor' : 'Driver'}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                {/* First 100 vendor bonus */}
+                {role === 'vendor' && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-xl p-2.5 text-center">
+                    <p className="text-orange-700 font-bold text-xs">🎉 First 100 Vendors Bonus!</p>
+                    <p className="text-orange-600 text-xs">Get <strong>$10 credit</strong> on your first month</p>
                   </div>
                 )}
               </div>
             )}
-          </TabsContent>
 
-          <TabsContent value="vendors">
-            <div className="mb-4">
-              <CommunityShowcase onSelectCategory={setSelectedCategory} selectedCategory={selectedCategory} />
-            </div>
-            <h2 className="text-lg font-bold text-gray-900 mb-4">
-              {filteredVendors.length} vendors in {selectedCity}
-              {activeCommunity ? ` — ${activeCommunity.name}` : ''}
-            </h2>
-            <div className="space-y-4">
-              {filteredVendors.map((vendor) => (
-                <div key={vendor.id} className="relative">
-                  <div className="absolute -top-2 left-4 z-10 flex gap-1">
-                    {vendor.tier === 'kitchen' && (
-                      <Badge className="bg-orange-500 text-white text-xs">🚐 Kitchen Partner</Badge>
-                    )}
-                    {vendor.tier === 'coop' && (
-                      <Badge className="bg-green-500 text-white text-xs">🤝 Co-op Member</Badge>
-                    )}
-                    <Badge className="bg-white border text-gray-700 text-xs" style={{fontFamily: 'serif'}}>
-                      {vendor.badge}
-                    </Badge>
-                  </div>
-                  <VendorCard
-                    vendor={{
-                      id: vendor.id,
-                      name: vendor.name,
-                      image: vendor.image,
-                      cuisine: vendor.specialty,
-                      rating: vendor.rating,
-                      prepTime: vendor.deliveryTime,
-                      distance: vendor.distance,
-                      description: vendor.specialty,
-                      isSample: true,
-                    }}
-                    onClick={() => console.log('Vendor clicked:', vendor.name)}
+            {/* Full name — signup only */}
+            {mode === 'signup' && (
+              <div>
+                <Label className="text-xs font-semibold text-gray-600">Full Name</Label>
+                <div className="relative mt-1">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    placeholder="Your full name"
+                    value={form.fullName}
+                    onChange={e => updateForm('fullName', e.target.value)}
+                    className={`pl-9 h-11 rounded-xl ${errors.fullName ? 'border-red-400' : 'border-gray-200'} focus:border-orange-400`}
                   />
                 </div>
-              ))}
-              {filteredVendors.length === 0 && (
-                <div className="text-center py-12">
-                  <span className="text-5xl mb-3 block">{activeCommunity?.emoji}</span>
-                  <p className="text-gray-500">No {activeCommunity?.name} vendors in {selectedCity} yet.</p>
-                  <Button className="mt-4 bg-orange-500 hover:bg-orange-600" onClick={() => navigate('/vendor-application')}>
-                    Be the First {activeCommunity?.name} Vendor
-                  </Button>
+                {errors.fullName && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.fullName}</p>}
+              </div>
+            )}
+
+            {/* Phone — signup only */}
+            {mode === 'signup' && (
+              <div>
+                <Label htmlFor="signup-phone" className="text-xs font-semibold text-gray-600">Mobile Phone</Label>
+                <div className="relative mt-1">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    id="signup-phone"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    placeholder="(312) 555-0123"
+                    value={form.phone}
+                    onChange={e => updateForm('phone', formatUSPhoneInput(e.target.value))}
+                    className={`pl-9 h-11 rounded-xl ${errors.phone ? 'border-red-400' : 'border-gray-200'} focus:border-orange-400`}
+                  />
                 </div>
+                {errors.phone
+                  ? <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.phone}</p>
+                  : <p className="text-gray-400 text-xs mt-1">So your driver, cook or customer can reach you about orders.</p>}
+              </div>
+            )}
+
+            {/* Email */}
+            <div>
+              <Label className="text-xs font-semibold text-gray-600">Email Address</Label>
+              <div className="relative mt-1">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  type="email"
+                  placeholder="you@example.com"
+                  value={form.email}
+                  onChange={e => updateForm('email', e.target.value)}
+                  className={`pl-9 h-11 rounded-xl ${errors.email ? 'border-red-400' : 'border-gray-200'} focus:border-orange-400`}
+                />
+              </div>
+              {errors.email && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.email}</p>}
+            </div>
+
+            {/* Password */}
+            <div>
+              <div className="flex justify-between items-center">
+                <Label className="text-xs font-semibold text-gray-600">Password</Label>
+                {mode === 'login' && (
+                  <button onClick={() => navigate('/reset-password')}
+                    className="text-xs text-orange-600 hover:underline">
+                    Forgot password?
+                  </button>
+                )}
+              </div>
+              <div className="relative mt-1">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={form.password}
+                  onChange={e => updateForm('password', e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && (mode === 'login' ? handleLogin() : handleSignup())}
+                  className={`pl-9 pr-10 h-11 rounded-xl ${errors.password ? 'border-red-400' : 'border-gray-200'} focus:border-orange-400`}
+                />
+                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {errors.password && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.password}</p>}
+            </div>
+
+            {/* Confirm password — signup only */}
+            {mode === 'signup' && (
+              <div>
+                <Label className="text-xs font-semibold text-gray-600">Confirm Password</Label>
+                <div className="relative mt-1">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={form.confirmPassword}
+                    onChange={e => updateForm('confirmPassword', e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSignup()}
+                    className={`pl-9 h-11 rounded-xl ${errors.confirmPassword ? 'border-red-400' : 'border-gray-200'} focus:border-orange-400`}
+                  />
+                </div>
+                {errors.confirmPassword && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.confirmPassword}</p>}
+              </div>
+            )}
+
+            {/* Submit button */}
+            <Button
+              onClick={mode === 'login' ? handleLogin : handleSignup}
+              disabled={loading}
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold h-12 rounded-2xl text-base shadow-lg"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  {mode === 'login' ? 'Signing in...' : 'Creating account...'}
+                </span>
+              ) : mode === 'login' ? (
+                <span className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" /> Sign In
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <Heart className="w-4 h-4" /> Create My Account
+                </span>
               )}
-            </div>
-          </TabsContent>
+            </Button>
 
-          {/* ── MARKET TAB ─────────────────────────────────── */}
-          <TabsContent value="market">
-            {/* Market hero banner */}
-            <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-5 mb-6 text-white relative overflow-hidden">
-              <div className="absolute inset-0 opacity-5" style={{backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '20px 20px'}} />
-              <div className="relative">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-2xl">🛍️</span>
-                  <h2 className="text-xl font-bold">Community Market</h2>
-                </div>
-                <p className="text-white/90 text-sm mb-3">
-                  Handmade goods from {selectedCity} community makers — soap, jewelry, art, candles & more. All delivered same-day by our drivers.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {['🧴 Beauty', '💎 Jewelry', '🕯️ Candles', '🎨 Art', '🧶 Textiles', '🌿 Plants'].map(tag => (
-                    <span key={tag} className="bg-white/20 text-white text-xs px-2 py-1 rounded-full border border-white/30">{tag}</span>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Market category showcase */}
-            <MarketShowcase
-              onSelectCategory={setSelectedCategory}
-              selectedCategory={selectedCategory}
-            />
-
-            {/* Market products grid */}
-            {(() => {
-              const activeMarketCat = MARKET_CATEGORIES.find(c => c.id === selectedCategory);
-              const marketProducts = selectedCategory === 'market-all' || !MARKET_CATEGORIES.find(c => c.id === selectedCategory)
-                ? SAMPLE_MARKET_PRODUCTS
-                : SAMPLE_MARKET_PRODUCTS.filter(p => p.category === selectedCategory);
-
-              return (
-                <>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-gray-900">
-                      {activeMarketCat
-                        ? `${activeMarketCat.emoji} ${activeMarketCat.name} in ${selectedCity}`
-                        : `All handmade goods in ${selectedCity}`}
-                    </h3>
-                    {selectedCategory !== 'market-all' && MARKET_CATEGORIES.find(c => c.id === selectedCategory) && (
-                      <button onClick={() => setSelectedCategory('market-all')}
-                        className="text-xs text-orange-600 hover:underline">
-                        Show all
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {marketProducts.map((item: any) => (
-                      <MarketItemCard
-                        key={item.id}
-                        {...item}
-                        onClick={() => handleAddToCart(item)}
-                      />
-                    ))}
-                    {marketProducts.length === 0 && (
-                      <div className="col-span-4 text-center py-16">
-                        <span className="text-5xl mb-3 block">{activeMarketCat?.emoji || '🛍️'}</span>
-                        <p className="text-gray-500 font-medium">No {activeMarketCat?.name} makers in {selectedCity} yet</p>
-                        <p className="text-gray-400 text-sm mt-1">Know a maker? Invite them to join!</p>
-                        <Button className="mt-4 bg-orange-500 hover:bg-orange-600" onClick={() => navigate('/vendor-application')}>
-                          Apply as a Vendor
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Become a maker CTA */}
-                  <div className="mt-8 bg-purple-50 border border-purple-200 rounded-2xl p-5 text-center">
-                    <p className="text-lg font-bold text-purple-800 mb-1">Are you a maker?</p>
-                    <p className="text-sm text-purple-600 mb-4">
-                      Sell your handmade soaps, jewelry, art & crafts on Homemade Connect.<br />
-                      Our drivers deliver your goods same-day across {selectedCity}.
-                    </p>
-                    <Button
-                      className="bg-purple-600 hover:bg-purple-700 text-white"
-                      onClick={() => navigate('/vendor-application')}
-                    >
-                      Apply to Sell in the Market
-                    </Button>
-                  </div>
+          {/* Help notice */}
+            {mode === 'login' && (
+              <p className="text-center text-xs text-gray-500">
+                Having trouble signing in? Email us at{' '}
+                <a href="mailto:info@homemadeconnectdelivery.com" className="text-orange-600 font-semibold hover:underline">
+                  info@homemadeconnectdelivery.com
+                </a>{' '}
+                with your name, business name, and signup email — we'll get you back in, usually within 24 hours.
+              </p>
+            )} 
+            {/* Switch mode */}
+            <p className="text-center text-sm text-gray-500">
+              {mode === 'login' ? (
+                <>Don't have an account?{' '}
+                  <button onClick={() => { setMode('signup'); setErrors({}); }}
+                    className="text-orange-600 font-bold hover:underline">
+                    Sign up free
+                  </button>
                 </>
-              );
-            })()}
-          </TabsContent>
+              ) : (
+                <>Already have an account?{' '}
+                  <button onClick={() => { setMode('login'); setErrors({}); }}
+                    className="text-orange-600 font-bold hover:underline">
+                    Sign in
+                  </button>
+                </>
+              )}
+            </p>
 
-        </Tabs>
-      </div>
-
-      {/* Subscription Modal */}
-      <Dialog open={showSubscription} onOpenChange={setShowSubscription}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl">
-              <Heart className="w-5 h-5 text-red-500 fill-red-500" />
-              Join the Homemade Connect Co-op
-            </DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-2">
-            {Object.values(CUSTOMER_TIERS).map((tier) => (
-              <div key={tier.id} className={`rounded-xl border-2 p-5 cursor-pointer hover:shadow-md transition-all ${
-                tier.id === 'coop' ? 'border-orange-500 bg-orange-50'
-                : tier.id === 'member' ? 'border-blue-400 bg-blue-50'
-                : 'border-gray-200 bg-white'
-              }`}>
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h3 className="font-bold text-gray-900">{tier.name}</h3>
-                    {tier.id === 'coop' && <Badge className="bg-orange-500 text-white text-xs mt-1">Most Popular</Badge>}
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold">{tier.price === 0 ? 'Free' : `$${tier.price}`}</div>
-                    {tier.price > 0 && <div className="text-xs text-gray-500">/month</div>}
-                  </div>
-                </div>
-                <ul className="space-y-1.5 mb-4">
-                  {tier.perks.map((perk, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                      <span className="text-green-500">✓</span>{perk}
-                    </li>
-                  ))}
-                </ul>
-                <Button className={`w-full ${
-                  tier.id === 'coop' ? 'bg-orange-500 hover:bg-orange-600 text-white'
-                  : tier.id === 'member' ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                }`} onClick={() => setShowSubscription(false)}>
-                  {tier.price === 0 ? 'Continue for Free' : `Join for $${tier.price}/mo`}
-                </Button>
-              </div>
-            ))}
+            <button onClick={() => setMode('landing')}
+              className="w-full text-center text-gray-400 text-xs hover:text-gray-600 py-1">
+              ← Back to home
+            </button>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialogs */}
-      <Dialog open={showOrderTracking} onOpenChange={setShowOrderTracking}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>Track Your Order</DialogTitle></DialogHeader>
-          <OrderTracking orderId={currentOrderId} />
-        </DialogContent>
-      </Dialog>
-      <Dialog open={showOrderHistory} onOpenChange={setShowOrderHistory}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>My Orders</DialogTitle></DialogHeader>
-          <CustomerOrdersView />
-        </DialogContent>
-      </Dialog>
-        <UserProfile open={showProfile} onClose={() => setShowProfile(false)} />    
+        </div>
+      </div>
     </div>
   );
 };
 
-const AppLayout: React.FC = () => (
-  <CartProvider>
-    <AppLayoutContent />
-  </CartProvider>
-);
-
-export default AppLayout;
-
+export default Welcome;
