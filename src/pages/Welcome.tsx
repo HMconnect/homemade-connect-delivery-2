@@ -66,6 +66,15 @@ const Welcome: React.FC = () => {
     confirmPassword: '',
   });
 
+  // Deep link: /welcome?join=driver|vendor|customer opens sign-up with that role selected
+  useEffect(() => {
+    const join = new URLSearchParams(window.location.search).get('join');
+    if (join === 'driver' || join === 'vendor' || join === 'customer') {
+      setRole(join);
+      setMode('signup');
+    }
+  }, []);
+
   // Rotate cultural scripts
   useEffect(() => {
     const timer = setInterval(() => {
