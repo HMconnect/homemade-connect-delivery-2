@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -86,6 +86,76 @@ const CATEGORY_EMOJI: Record<string, string> = {
 };
 
 const DriverDashboard: React.FC = () => {
+  const navigate = useNavigate();
+  const { user, profile, loading } = useAuth();
+
+  // Visitors who aren't signed in go to sign-up with "Driver" already selected.
+  useEffect(() => {
+    if (!loading && !user) navigate('/welcome?join=driver', { replace: true });
+  }, [loading, user, navigate]);
+
+  if (loading || !user || !profile) {
+    return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading…</div>;
+  }
+
+  // Signed-in customers must switch their account to a driver account first,
+  // so they show up as drivers for the admin team.
+  if (profile.role === 'customer' || profile.role === 'vendor') {
+    return <BecomeDriver isVendor={profile.role === 'vendor'} />;
+  }
+
+  return <DriverDashboardContent />;
+};
+
+function BecomeDriver({ isVendor }: { isVendor: boolean }) {
+  const navigate = useNavigate();
+  const { updateProfile } = useAuth();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const become = async () => {
+    setSaving(true);
+    setError('');
+    const { error } = await updateProfile({ role: 'driver' });
+    setSaving(false);
+    if (error) setError('Something went wrong. Please try again.');
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-10">
+      <div className="max-w-md w-full bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-5">
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
+          <Car className="w-7 h-7 text-white" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Drive &amp; Earn with Your Neighbors</h1>
+          <p className="text-gray-600 mt-1">Deliver homemade food in your own community, on your own schedule.</p>
+        </div>
+        <ul className="space-y-2 text-sm text-gray-700">
+          <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />Keep 100% of your tips</li>
+          <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />Choose when you go online</li>
+          <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />Age 70+ or have a disability? Apply for our Curbside Protocol and earn without leaving your car</li>
+        </ul>
+        {isVendor ? (
+          <p className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+            This is a vendor account. To drive, please sign up for a separate driver account with a different email address.
+          </p>
+        ) : (
+          <>
+            <p className="text-sm text-gray-500">This switches your account to a driver account. You can still order food.</p>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <Button onClick={become} disabled={saving} className="w-full h-12 bg-orange-500 hover:bg-orange-600 font-bold text-base">
+              {saving ? 'Setting up…' : 'Become a Driver'}
+            </Button>
+          </>
+        )}
+        <button onClick={() => navigate('/')} className="w-full text-sm text-gray-500 hover:text-gray-700">Back to home</button>
+      </div>
+    </div>
+  );
+}
+
+const DriverDashboardContent: React.FC = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const [isOnline, setIsOnline] = useState(false);
